@@ -14,65 +14,34 @@ public:
     static std::pair<int, std::vector<Token>>while_handler(const std::string& ptr_file, int i); 
 };
 
-inline std::pair<int, std::vector<Token>> Handler::var_handler(const std::string& ptr_file, int i) {
-    std::vector<Token> arr;
-    std::string name = "";
-
-    while (i < ptr_file.size() && ptr_file[i] != ' ') {
-        name += ptr_file[i];
-        i++;
-    }
-
-    auto tk_name = determine_tk(name);
-    arr.push_back(Token(tk_name, name));
-    while (i < ptr_file.size() && ptr_file[i] == ' ') i++;
-
-    std::string next = "";
-    while (i < ptr_file.size() && ptr_file[i] != ' ') {
-        next += ptr_file[i];
-        i++;
-    }
-
-    auto next_tk = determine_tk(next);
-    arr.push_back(Token(next_tk, next));
-    while (i < ptr_file.size() && ptr_file[i] == ' ') i++;
-
-    std::string type = "";
-    while (i < ptr_file.size() && ptr_file[i] != ' ') {
-        type += ptr_file[i];
-        i++;
-    }
-
-    auto tk_type = determine_tk(type);
-    arr.push_back(Token(tk_type, type));
-    while (i < ptr_file.size() && ptr_file[i] == ' ') i++;
-
-    std::string next_symbol = "";
-    auto index = i;
-    while (i < ptr_file.size() && ptr_file[i] != ' ') {
-        next_symbol += ptr_file[i];
-        i++;
-    }
-
-    if (next_symbol != "is") {
-        return {index, arr};
-    } else {
-        arr.push_back(Token(determine_tk(next_symbol), next_symbol));
-        while (i < ptr_file.size() && ptr_file[i] == ' ') i++;
-
-        std::string value = "";
-        while (i < ptr_file.size() && ptr_file[i] != ' ') {
-            value += ptr_file[i];
-            i++;
-        }
-        arr.push_back(Token(determine_tk(value), value));
-        return {i, arr};
-    }
-}
-
-
 inline std::pair<int, std::vector<Token>>while_handler(const std::string& ptr_file, int i){
+    std::vector<Token> all_tokens;
+    while (i < ptr_file.size() && ptr_file[i] == ' ') i++;
+    std::string expression = ""; 
+    // considering 1st tc
+    while (i < ptr_file.size() && ptr_file[i] != ' '){
+        expression+= ptr_file[i];
+    }
+    expression = ""; 
+    // insert bool_val 
+    all_tokens.push_back({TokenType::tk_identifier, expression}); 
 
+    // get rid off spaces  
+    while (i < ptr_file.size() && ptr_file[i] == ' ') i++;
+    
+    while(i < ptr_file.size() && ptr_file[i] != ' '){
+        expression += ptr_file[i];
+    }
+    // insert loop
+    all_tokens.push_back({TokenType::tk_loop, expression});
+    expression = ""; 
+    // get rid off spaces  
+    while (i < ptr_file.size() && ptr_file[i] == ' ') i++;
+
+    while(i < ptr_file.size() && ptr_file[i]!=' '){
+        expression += ptr_file[i];
+    }
+    return {};
 }
 inline TokenType Handler::determine_tk(const std::string& tk) {
     if (tk == "routine") return TokenType::tk_routine;

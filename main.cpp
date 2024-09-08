@@ -117,27 +117,17 @@ int main() {
    std::string potential = "";
    int i = 0 ; 
       while(i < fileContents.size()){
-          if (fileContents[i] == ' '){
-            auto t =  Handler::determine_tk(potential);
-            std::pair<int,std::vector<Token>> result;
-             switch (t){
-                case TokenType::tk_var:
-                   std::cout << toString(t);
-                     result = Handler::var_handler(fileContents, i);
-                     Insert_to_output(output, result.second);
-                     break;
-                default:
-                break;
       
-
-              // case TokenType::tk_while: 
-                //  pair(int, vector<Token>) result = while_handler(fileContents, i);
-                  //i = result.first ; 
-                  // output.insert(output.end(), result.second.begin(), result.second.end());
-               // Insert_to_output(output, result.second); 
-                   
+          if (fileContents[i] == ' ' || fileContents[i] =='\n'){
+         if ( potential=="" ) {
+                 i++;
+              }
+             else{
+            auto t =  Handler::determine_tk(potential);
+            output.push_back(Token(t,potential));
+            i++;
+            potential ="";
              }
-             i = result.first;
 
           }else{
              potential += fileContents[i];
@@ -160,8 +150,13 @@ int main() {
       // }
    
    }
+   if (potential != ""){
+      auto t =  Handler::determine_tk(potential);
+      output.push_back(Token(t,potential));
+   }
    for (auto & i : output){
-      std::cout << i.value;
+      std::cout << i.value << " ";
       std::cout << toString(i.type); 
+      std:: cout << std::endl;
    }
 }

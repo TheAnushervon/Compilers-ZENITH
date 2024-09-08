@@ -1,0 +1,15 @@
+Fix : 
+:= 
+1..5 
+
+с большой буквы - types
+
+решение:
+функция, которая проверяет есть ли внутри строки оператор, если есть -> парсит на новые аргументы (:=, +1)
+
+array[5] - assuming as Identifier
+array[] - assuming as : 
+array[ - identifier 
+] as tk_close_bracket 
+
+
