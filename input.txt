@@ -1,0 +1,3 @@
+var x : integer
+var pi : real is 3.14
+
