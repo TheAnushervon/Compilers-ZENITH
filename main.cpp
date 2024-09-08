@@ -105,14 +105,15 @@ int main() {
    std::string fileContents((std::istreambuf_iterator<char>(inputfile)),
                             std::istreambuf_iterator<char>());
    std::vector<Token> output;
-   output.emplace_back(TokenType::tk_if, "if");
-   std::cout << output[0].value;
-   std::cout << toString(output[0].type); 
+   
+   // output.emplace_back(TokenType::tk_if, "if");
+   // std::cout << output[0].value;
+   // std::cout << toString(output[0].type); 
    // auto index = 0;
    
 
    // int space_counter = 0;
-   std::cout << std::endl<< fileContents << std::endl;
+   // std::cout << std::endl<< fileContents << std::endl;
    std::string potential = "";
    int i = 0 ; 
       while(i < fileContents.size()){
@@ -120,7 +121,8 @@ int main() {
             auto t =  Handler::determine_tk(potential);
             std::pair<int,std::vector<Token>> result;
              switch (t){
-                case TokenType::tk_var: 
+                case TokenType::tk_var:
+                   std::cout << toString(t);
                      result = Handler::var_handler(fileContents, i);
                      Insert_to_output(output, result.second);
                      break;

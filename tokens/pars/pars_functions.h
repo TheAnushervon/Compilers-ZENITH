@@ -11,6 +11,7 @@ class Handler {
 public:
     static std::pair<int, std::vector<Token>> var_handler(const std::string& ptr_file, int i);
     static TokenType determine_tk(const std::string& tk);
+    static std::pair<int, std::vector<Token>>while_handler(const std::string& ptr_file, int i); 
 };
 
 inline std::pair<int, std::vector<Token>> Handler::var_handler(const std::string& ptr_file, int i) {
@@ -55,7 +56,7 @@ inline std::pair<int, std::vector<Token>> Handler::var_handler(const std::string
 
     if (next_symbol != "is") {
         return {index, arr};
-    } else {  
+    } else {
         arr.push_back(Token(determine_tk(next_symbol), next_symbol));
         while (i < ptr_file.size() && ptr_file[i] == ' ') i++;
 
@@ -69,6 +70,10 @@ inline std::pair<int, std::vector<Token>> Handler::var_handler(const std::string
     }
 }
 
+
+inline std::pair<int, std::vector<Token>>while_handler(const std::string& ptr_file, int i){
+
+}
 inline TokenType Handler::determine_tk(const std::string& tk) {
     if (tk == "routine") return TokenType::tk_routine;
     if (tk == "type") return TokenType::tk_type;
@@ -122,5 +127,4 @@ inline TokenType Handler::determine_tk(const std::string& tk) {
     // Default case if none of the above match
     return TokenType::tk_identifier;
 }
-
 #endif // HANDLER_H
