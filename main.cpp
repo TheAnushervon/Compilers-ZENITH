@@ -4,7 +4,8 @@
 #include <stack>
 #include <vector>
 #include "tokens/enums/token_type.h"
-#include
+#include "tokens/pars/pars_functions.h"
+#include "tokens/structs/token.h"
 
 
 std::string toString(TokenType token) {
@@ -116,17 +117,19 @@ int main() {
    int i = 0 ; 
       while(i < fileContents.size()){
           if (fileContents[i] == ' '){
-            auto t =  Handler.determine_tk(potential);
+            auto t =  Handler::determine_tk(potential);
             std::pair<int,std::vector<Token>> result;
              switch (t){
                 case TokenType::tk_var: 
-                     result = Handler.var_hadler(&fileContents, i);
+                     result = Handler::var_handler(fileContents, i);
+                     Insert_to_output(output, result.second);
+                   i =result.first;
 
-               case TokenType::tk_while: 
-                  pair(int, vector<Token>) result = while_handler(fileContents, i);
-                  i = result.first ; 
+              // case TokenType::tk_while: 
+                //  pair(int, vector<Token>) result = while_handler(fileContents, i);
+                  //i = result.first ; 
                   // output.insert(output.end(), result.second.begin(), result.second.end());
-                Insert_to_output(output, result.second); 
+               // Insert_to_output(output, result.second); 
                    
              }
              i = result.first;
@@ -151,5 +154,9 @@ int main() {
       //    space_counter++;
       // }
    
+   }
+   for (auto & i : output){
+      std::cout << i.value;
+      std::cout << toString(i.type); 
    }
 }
