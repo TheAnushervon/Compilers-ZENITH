@@ -123,6 +123,9 @@ int main() {
                 case TokenType::tk_var: 
                      result = Handler::var_handler(fileContents, i);
                      Insert_to_output(output, result.second);
+                     break;
+                default:
+                break;
       
 
               // case TokenType::tk_while: 
