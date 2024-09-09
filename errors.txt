@@ -12,4 +12,5 @@ array[] - assuming as :
 array[ - identifier 
 ] as tk_close_bracket 
 
+Convert after to json-format 
 
