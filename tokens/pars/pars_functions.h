@@ -81,38 +81,65 @@ Handler::parse_tokens(const std::string &fileContents) {
     while (i < fileContents.size()) {
         char currentChar = fileContents[i];
 
-        if (currentChar == ' ' || currentChar == '\n') {
-            if (!potential.empty()) {
+        if (currentChar == ' ' || currentChar == '\n' || currentChar == '(' ||
+            currentChar == ')' || currentChar == '[' || currentChar == ']' ||
+            currentChar == ':' || currentChar == '=' || currentChar == ',' ||
+            currentChar == '/' || currentChar == '<' || currentChar == '>') {
 
+            std::string str = "";
+            if (currentChar != ' ') {
+                str += currentChar;
+                if ((currentChar == ':' || currentChar == '>' ||
+                     currentChar == '<' || currentChar == '/') &&
+                    i + 1 < fileContents.size() && fileContents[i + 1] == '=') {
+                    str.pop_back();
+                } else if (currentChar == '=' && i - 1 >= 0 &&
+                           (fileContents[i - 1] == ':' ||
+                            fileContents[i - 1] == '<' ||
+                            fileContents[i - 1] == '>' ||
+                            fileContents[i - 1] == '/')) {
+                    str.pop_back();
+                    str = fileContents[i - 1];
+                    str += '=';
+                }
+            }
+
+            if (!potential.empty()) {
                 if (check_for_range(potential)) {
-                    std::string number = "";
+                    std::string substr = "";
                     for (int j = 0; j < potential.size(); j++) {
                         if (potential[j] != '.')
-                            number += potential[j];
+                            substr += potential[j];
                         else {
-                            if (!number.empty())
-                                output.push_back(
-                                    Token(TokenType::tk_num, number));
-                            else {
+                            if (!substr.empty()) {
+                                auto t = Handler::determine_tk(substr);
+                                output.push_back(Token(t, substr));
+                            } else {
                                 output.push_back(
                                     Token(TokenType::tk_range, ".."));
                             }
-                            number = "";
+                            substr = "";
                         }
                     }
-                    if (!number.empty())
-                        output.push_back(Token(TokenType::tk_num, number));
+                    if (!substr.empty()) {
+                        auto t = Handler::determine_tk(substr);
+                        output.push_back(Token(t, substr));
+                    }
                     potential = "";
                 }
 
                 else {
-                    auto n = get_tokens_id_exist(potential);
-                    output.insert(output.end(), n.begin(), n.end());
+                    /*auto n = get_tokens_id_exist(potential);*/
+                    /*output.insert(output.end(), n.begin(), n.end());*/
 
                     auto t = Handler::determine_tk(potential);
                     output.push_back(Token(t, potential));
                     potential = "";
                 }
+            }
+            if (!str.empty()) {
+                auto t = Handler::determine_tk(str);
+                output.push_back(Token(t, str));
             }
             i++;
         } else {
@@ -189,7 +216,7 @@ inline TokenType Handler::determine_tk(const std::string &tk) {
         return TokenType::tk_mod;
     if (tk == "=")
         return TokenType::tk_equal;
-    if (tk == "!=")
+    if (tk == "/=")
         return TokenType::tk_not_equal;
     if (tk == "<")
         return TokenType::tk_less_than;
