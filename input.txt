@@ -11,7 +11,7 @@ routine Partition(arr: array [ ] integer, left: integer, right: integer) : integ
     var i: integer is left - 1
 
     for j in left..right - 1 loop
-        if arr[j] <= pivot then
+        if arr[j] /= pivot then
             i := i + 1
             Swap(arr[i], arr[j])
         end
