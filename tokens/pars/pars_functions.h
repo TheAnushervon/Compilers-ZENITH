@@ -83,12 +83,36 @@ Handler::parse_tokens(const std::string &fileContents) {
 
         if (currentChar == ' ' || currentChar == '\n') {
             if (!potential.empty()) {
-                auto n = get_tokens_id_exist(potential);
-                output.insert(output.end(), n.begin(), n.end());
 
-                auto t = Handler::determine_tk(potential);
-                output.push_back(Token(t, potential));
-                potential = "";
+                if (check_for_range(potential)) {
+                    std::string number = "";
+                    for (int j = 0; j < potential.size(); j++) {
+                        if (potential[j] != '.')
+                            number += potential[j];
+                        else {
+                            if (!number.empty())
+                                output.push_back(
+                                    Token(TokenType::tk_num, number));
+                            else {
+                                output.push_back(
+                                    Token(TokenType::tk_range, ".."));
+                            }
+                            number = "";
+                        }
+                    }
+                    if (!number.empty())
+                        output.push_back(Token(TokenType::tk_num, number));
+                    potential = "";
+                }
+
+                else {
+                    auto n = get_tokens_id_exist(potential);
+                    output.insert(output.end(), n.begin(), n.end());
+
+                    auto t = Handler::determine_tk(potential);
+                    output.push_back(Token(t, potential));
+                    potential = "";
+                }
             }
             i++;
         } else {
