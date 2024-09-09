@@ -6,49 +6,76 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <set>
 
 class Handler {
-  public:
+public:
     static std::pair<int, std::vector<Token>>
     var_handler(const std::string &ptr_file, int i);
+
     static TokenType determine_tk(const std::string &tk);
+
     static std::pair<int, std::vector<Token>>
     while_handler(const std::string &ptr_file, int i);
+
+    static std::vector<Token> get_tokens_id_exist(const std::string &tk);
+    static std::vector<Token> parse_tokens(const std::string &fileContents);
 };
 
-inline std::pair<int, std::vector<Token>>
-while_handler(const std::string &ptr_file, int i) {
-    std::vector<Token> all_tokens;
-    while (i < ptr_file.size() && ptr_file[i] == ' ')
-        i++;
-    std::string expression = "";
-    // considering 1st tc
-    while (i < ptr_file.size() && ptr_file[i] != ' ') {
-        expression += ptr_file[i];
-    }
-    expression = "";
-    // insert bool_val
-    all_tokens.push_back({TokenType::tk_identifier, expression});
+inline std::vector<Token> Handler::get_tokens_id_exist(const std::string &tk) {
+    std::set<char> mySet = {':', '=', '[', ']', '(', ')'};
+    std::vector<Token> tokens;
 
-    // get rid off spaces
-    while (i < ptr_file.size() && ptr_file[i] == ' ')
-        i++;
-
-    while (i < ptr_file.size() && ptr_file[i] != ' ') {
-        expression += ptr_file[i];
+    for (char ch : tk) {
+        if (mySet.find(ch) != mySet.end()) {
+            TokenType t;
+            switch (ch) {
+                case ':': t = TokenType::tk_colon; break;
+                case '=': t = TokenType::tk_equal; break;
+                case '[': t = TokenType::tk_open_bracket; break;
+                case ']': t = TokenType::tk_close_bracket; break;
+                case '(': t = TokenType::tk_open_parenthesis; break;
+                case ')': t = TokenType::tk_close_parenthesis; break;
+                default: continue;
+            }
+            tokens.push_back(Token(t, std::string(1, ch)));
+        }
     }
-    // insert loop
-    all_tokens.push_back({TokenType::tk_loop, expression});
-    expression = "";
-    // get rid off spaces
-    while (i < ptr_file.size() && ptr_file[i] == ' ')
-        i++;
-
-    while (i < ptr_file.size() && ptr_file[i] != ' ') {
-        expression += ptr_file[i];
-    }
-    return {};
+    return tokens;
 }
+
+inline std::vector<Token> Handler::parse_tokens(const std::string &fileContents) {
+    std::vector<Token> output;
+    std::string potential;
+    int i = 0;
+
+    while (i < fileContents.size()) {
+        char currentChar = fileContents[i];
+
+        if (currentChar == ' ' || currentChar == '\n') {
+            if (!potential.empty()) {
+                auto n = get_tokens_id_exist(potential);
+                output.insert(output.end(), n.begin(), n.end());
+
+                auto t = Handler::determine_tk(potential);
+                output.push_back(Token(t, potential));
+                potential = "";
+            }
+            i++;
+        } else {
+            potential += currentChar;
+            i++;
+        }
+    }
+
+    if (!potential.empty()) {
+        auto t = Handler::determine_tk(potential);
+        output.push_back(Token(t, potential));
+    }
+
+    return output;
+}
+
 inline TokenType Handler::determine_tk(const std::string &tk) {
     if (tk == "routine")
         return TokenType::tk_routine;
@@ -144,7 +171,7 @@ inline TokenType Handler::determine_tk(const std::string &tk) {
     if (tk == "identifier")
         return TokenType::tk_identifier;
 
-    // Default case if none of the above match
     return TokenType::tk_identifier;
 }
+
 #endif // HANDLER_H

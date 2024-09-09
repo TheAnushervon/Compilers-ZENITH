@@ -151,56 +151,9 @@ int main() {
     std::string fileContents((std::istreambuf_iterator<char>(inputfile)),
                              std::istreambuf_iterator<char>());
     std::vector<Token> output;
-
-    // output.emplace_back(TokenType::tk_if, "if");
-    // std::cout << output[0].value;
-    // std::cout << toString(output[0].type);
-    // auto index = 0;
-
-    // int space_counter = 0;
-    // std::cout << std::endl<< fileContents << std::endl;
     std::string potential = "";
-    int i = 0;
-    while (i < fileContents.size()) {
 
-        if (fileContents[i] == ' ' || fileContents[i] == '\n') {
-            if (potential == "") {
-                i++;
-            } else {
-                auto t = Handler::determine_tk(potential);
-                output.push_back(Token(t, potential));
-                i++;
-                potential = "";
-            }
-
-        } else {
-            potential += fileContents[i];
-            i++;
-        }
-
-        // if (isalpha(ch)) {
-        //    potential += ch;
-        // } else if (ch == ' ') {
-        //    space_counter++;
-        //    //determine_tk(potential);
-        // }
-        // // check for \n
-        // if (space_counter == 2) {
-        //    output.emplace_back(TokenType::tk_if, "if");
-        // }
-        // if (ch == ' ') {
-        //    space_counter++;
-        // }
-    }
-    if (potential != "") {
-        auto t = Handler::determine_tk(potential);
-        output.push_back(Token(t, potential));
-    }
-    /*for (auto &i : output) {*/
-    /*    std::cout << i.value << " ";*/
-    /*    std::cout << toString(i.type);*/
-    /*    std::cout << std::endl;*/
-    /*}*/
+    auto output = Handler::parse_tokens(fileContents);
 
     nh::json json_output;
 
