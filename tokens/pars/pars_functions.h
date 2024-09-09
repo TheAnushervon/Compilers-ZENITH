@@ -3,13 +3,14 @@
 
 #include "../enums/token_type.h"
 #include "../structs/token.h"
+#include <set>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
-#include <set>
 
 class Handler {
-public:
+  public:
     static std::pair<int, std::vector<Token>>
     var_handler(const std::string &ptr_file, int i);
 
@@ -20,6 +21,7 @@ public:
 
     static std::vector<Token> get_tokens_id_exist(const std::string &tk);
     static std::vector<Token> parse_tokens(const std::string &fileContents);
+    static bool check_for_range(const std::string &tk);
 };
 
 inline std::vector<Token> Handler::get_tokens_id_exist(const std::string &tk) {
@@ -30,13 +32,26 @@ inline std::vector<Token> Handler::get_tokens_id_exist(const std::string &tk) {
         if (mySet.find(ch) != mySet.end()) {
             TokenType t;
             switch (ch) {
-                case ':': t = TokenType::tk_colon; break;
-                case '=': t = TokenType::tk_equal; break;
-                case '[': t = TokenType::tk_open_bracket; break;
-                case ']': t = TokenType::tk_close_bracket; break;
-                case '(': t = TokenType::tk_open_parenthesis; break;
-                case ')': t = TokenType::tk_close_parenthesis; break;
-                default: continue;
+            case ':':
+                t = TokenType::tk_colon;
+                break;
+            case '=':
+                t = TokenType::tk_equal;
+                break;
+            case '[':
+                t = TokenType::tk_open_bracket;
+                break;
+            case ']':
+                t = TokenType::tk_close_bracket;
+                break;
+            case '(':
+                t = TokenType::tk_open_parenthesis;
+                break;
+            case ')':
+                t = TokenType::tk_close_parenthesis;
+                break;
+            default:
+                continue;
             }
             tokens.push_back(Token(t, std::string(1, ch)));
         }
@@ -44,7 +59,21 @@ inline std::vector<Token> Handler::get_tokens_id_exist(const std::string &tk) {
     return tokens;
 }
 
-inline std::vector<Token> Handler::parse_tokens(const std::string &fileContents) {
+inline bool Handler::check_for_range(const std::string &tk) {
+    int cnt = 0;
+    for (int i = 0; i < tk.size(); i++) {
+        if (tk[i] == '.' && cnt == 0) {
+            cnt++;
+        } else if (tk[i] == '.' && cnt == 1) {
+            return true;
+        } else
+            cnt = 0;
+    }
+    return false;
+}
+
+inline std::vector<Token>
+Handler::parse_tokens(const std::string &fileContents) {
     std::vector<Token> output;
     std::string potential;
     int i = 0;
@@ -168,8 +197,12 @@ inline TokenType Handler::determine_tk(const std::string &tk) {
 
     if (tk == "\n")
         return TokenType::tk_newline;
-    if (tk == "identifier")
+    try {
+        stoi(tk);
+        return TokenType::tk_num;
+    } catch (std::invalid_argument) {
         return TokenType::tk_identifier;
+    }
 
     return TokenType::tk_identifier;
 }

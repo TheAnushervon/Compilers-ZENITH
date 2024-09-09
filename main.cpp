@@ -101,6 +101,8 @@ std::string toString(TokenType token) {
         return "tk_range";
     case TokenType::tk_newline:
         return "tk_newline";
+    case TokenType::tk_num:
+        return "tk_num";
     case TokenType::tk_identifier:
         return "tk_identifier";
     default:
@@ -150,7 +152,6 @@ int main() {
     std::ifstream inputfile("input.txt");
     std::string fileContents((std::istreambuf_iterator<char>(inputfile)),
                              std::istreambuf_iterator<char>());
-    std::vector<Token> output;
     std::string potential = "";
 
     auto output = Handler::parse_tokens(fileContents);
