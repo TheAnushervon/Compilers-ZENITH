@@ -206,10 +206,10 @@ int main() {
 
     for (int i = 0; i < output.size(); i++) {
         json_output.push_back(
-            {{"type", output[i].type}, {"value", output[i].value}});
+            {{"type", toString(output[i].type)}, {"value", output[i].value}});
     }
 
     std::ofstream output_file("output.json");
-    output_file << json_output;
+    output_file << json_output.dump(4);
     output_file.close();
 }
