@@ -110,45 +110,11 @@ std::string toString(TokenType token) {
     }
 };
 
-bool is_simple_sign(char t) {
-    // removed t == '/', cause we have /=
-    // removed  t == '=', cause we have :=
-    // could be solved using stack when meet them
-    if (t == '+' || t == '-' || t == '*') {
-        return true;
-    }
-    return false;
-}
-bool is_factor(char t) {
-    // removed t == '/', cause we have /=
-    if (t == '*' || t == '%') {
-        return true;
-    }
-    return false;
-}
 
-// var x : integer
-// trigers : ' ', ':'
 
-// output.push_back(Token{determine_tk(string potential), potential});
-// std::pair<int,vector<TokenType>> var_hadler(&ptr_file, i){
-//   auto name ="";
-// while(ptr_file[i] != ' '){
-// name += ptr_file[i];
-// i++;
-//}
-// i+=3
-// auto type ="";
-//  while(ptr_file[i] != ' '){
-// type += ptr_file[i];
-// i++;
-//}
-void Insert_to_output(std::vector<Token> &output, std::vector<Token> &result) {
-    for (int i = 0; i < result.size(); i++) {
-        output.emplace_back(result[i].type, result[i].value);
-    }
-}
+
 int main() {
+    
     std::ifstream inputfile("input.txt");
     std::string fileContents((std::istreambuf_iterator<char>(inputfile)),
                              std::istreambuf_iterator<char>());

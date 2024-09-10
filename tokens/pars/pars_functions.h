@@ -129,8 +129,6 @@ Handler::parse_tokens(const std::string &fileContents) {
                 }
 
                 else {
-                    /*auto n = get_tokens_id_exist(potential);*/
-                    /*output.insert(output.end(), n.begin(), n.end());*/
 
                     auto t = Handler::determine_tk(potential);
                     output.push_back(Token(t, potential));
