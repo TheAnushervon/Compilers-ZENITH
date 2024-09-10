@@ -1,10 +1,8 @@
 #include "json.hpp"
 #include "tokens/enums/token_type.h"
 #include "tokens/pars/pars_functions.h"
-#include "tokens/structs/token.h"
 #include <cctype>
 #include <fstream>
-#include <iostream>
 #include <vector>
 
 namespace nh = nlohmann;
@@ -110,11 +108,8 @@ std::string toString(TokenType token) {
     }
 };
 
-
-
-
 int main() {
-    
+
     std::ifstream inputfile("input.txt");
     std::string fileContents((std::istreambuf_iterator<char>(inputfile)),
                              std::istreambuf_iterator<char>());

@@ -11,53 +11,10 @@
 
 class Handler {
   public:
-    static std::pair<int, std::vector<Token>>
-    var_handler(const std::string &ptr_file, int i);
-
     static TokenType determine_tk(const std::string &tk);
-
-    static std::pair<int, std::vector<Token>>
-    while_handler(const std::string &ptr_file, int i);
-
-    static std::vector<Token> get_tokens_id_exist(const std::string &tk);
     static std::vector<Token> parse_tokens(const std::string &fileContents);
     static bool check_for_range(const std::string &tk);
 };
-
-inline std::vector<Token> Handler::get_tokens_id_exist(const std::string &tk) {
-    std::set<char> mySet = {':', '=', '[', ']', '(', ')'};
-    std::vector<Token> tokens;
-
-    for (char ch : tk) {
-        if (mySet.find(ch) != mySet.end()) {
-            TokenType t;
-            switch (ch) {
-            case ':':
-                t = TokenType::tk_colon;
-                break;
-            case '=':
-                t = TokenType::tk_equal;
-                break;
-            case '[':
-                t = TokenType::tk_open_bracket;
-                break;
-            case ']':
-                t = TokenType::tk_close_bracket;
-                break;
-            case '(':
-                t = TokenType::tk_open_parenthesis;
-                break;
-            case ')':
-                t = TokenType::tk_close_parenthesis;
-                break;
-            default:
-                continue;
-            }
-            tokens.push_back(Token(t, std::string(1, ch)));
-        }
-    }
-    return tokens;
-}
 
 inline bool Handler::check_for_range(const std::string &tk) {
     int cnt = 0;
@@ -84,7 +41,8 @@ Handler::parse_tokens(const std::string &fileContents) {
         if (currentChar == ' ' || currentChar == '\n' || currentChar == '(' ||
             currentChar == ')' || currentChar == '[' || currentChar == ']' ||
             currentChar == ':' || currentChar == '=' || currentChar == ',' ||
-            currentChar == '/' || currentChar == '<' || currentChar == '>') {
+            currentChar == '/' || currentChar == '<' || currentChar == '>' ||
+            currentChar == '.') {
 
             std::string str = "";
             if (currentChar != ' ') {
