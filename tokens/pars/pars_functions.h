@@ -3,48 +3,34 @@
 
 #include "../enums/token_type.h"
 #include "../structs/token.h"
+#include <set>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
-#include <set>
 
 class Handler {
-public:
-    static std::pair<int, std::vector<Token>>
-    var_handler(const std::string &ptr_file, int i);
-
+  public:
     static TokenType determine_tk(const std::string &tk);
-
-    static std::pair<int, std::vector<Token>>
-    while_handler(const std::string &ptr_file, int i);
-
-    static std::vector<Token> get_tokens_id_exist(const std::string &tk);
     static std::vector<Token> parse_tokens(const std::string &fileContents);
+    static bool check_for_range(const std::string &tk);
 };
 
-inline std::vector<Token> Handler::get_tokens_id_exist(const std::string &tk) {
-    std::set<char> mySet = {':', '=', '[', ']', '(', ')'};
-    std::vector<Token> tokens;
-
-    for (char ch : tk) {
-        if (mySet.find(ch) != mySet.end()) {
-            TokenType t;
-            switch (ch) {
-                case ':': t = TokenType::tk_colon; break;
-                case '=': t = TokenType::tk_equal; break;
-                case '[': t = TokenType::tk_open_bracket; break;
-                case ']': t = TokenType::tk_close_bracket; break;
-                case '(': t = TokenType::tk_open_parenthesis; break;
-                case ')': t = TokenType::tk_close_parenthesis; break;
-                default: continue;
-            }
-            tokens.push_back(Token(t, std::string(1, ch)));
-        }
+inline bool Handler::check_for_range(const std::string &tk) {
+    int cnt = 0;
+    for (int i = 0; i < tk.size(); i++) {
+        if (tk[i] == '.' && cnt == 0) {
+            cnt++;
+        } else if (tk[i] == '.' && cnt == 1) {
+            return true;
+        } else
+            cnt = 0;
     }
-    return tokens;
+    return false;
 }
 
-inline std::vector<Token> Handler::parse_tokens(const std::string &fileContents) {
+inline std::vector<Token>
+Handler::parse_tokens(const std::string &fileContents) {
     std::vector<Token> output;
     std::string potential;
     int i = 0;
@@ -52,14 +38,64 @@ inline std::vector<Token> Handler::parse_tokens(const std::string &fileContents)
     while (i < fileContents.size()) {
         char currentChar = fileContents[i];
 
-        if (currentChar == ' ' || currentChar == '\n') {
-            if (!potential.empty()) {
-                auto n = get_tokens_id_exist(potential);
-                output.insert(output.end(), n.begin(), n.end());
+        if (currentChar == ' ' || currentChar == '\n' || currentChar == '(' ||
+            currentChar == ')' || currentChar == '[' || currentChar == ']' ||
+            currentChar == ':' || currentChar == '=' || currentChar == ',' ||
+            currentChar == '/' || currentChar == '<' || currentChar == '>' ||
+            currentChar == '.') {
 
-                auto t = Handler::determine_tk(potential);
-                output.push_back(Token(t, potential));
-                potential = "";
+            std::string str = "";
+            if (currentChar != ' ') {
+                str += currentChar;
+                if ((currentChar == ':' || currentChar == '>' ||
+                     currentChar == '<' || currentChar == '/') &&
+                    i + 1 < fileContents.size() && fileContents[i + 1] == '=') {
+                    str.pop_back();
+                } else if (currentChar == '=' && i - 1 >= 0 &&
+                           (fileContents[i - 1] == ':' ||
+                            fileContents[i - 1] == '<' ||
+                            fileContents[i - 1] == '>' ||
+                            fileContents[i - 1] == '/')) {
+                    str.pop_back();
+                    str = fileContents[i - 1];
+                    str += '=';
+                }
+            }
+
+            if (!potential.empty()) {
+                if (check_for_range(potential)) {
+                    std::string substr = "";
+                    for (int j = 0; j < potential.size(); j++) {
+                        if (potential[j] != '.')
+                            substr += potential[j];
+                        else {
+                            if (!substr.empty()) {
+                                auto t = Handler::determine_tk(substr);
+                                output.push_back(Token(t, substr));
+                            } else {
+                                output.push_back(
+                                    Token(TokenType::tk_range, ".."));
+                            }
+                            substr = "";
+                        }
+                    }
+                    if (!substr.empty()) {
+                        auto t = Handler::determine_tk(substr);
+                        output.push_back(Token(t, substr));
+                    }
+                    potential = "";
+                }
+
+                else {
+
+                    auto t = Handler::determine_tk(potential);
+                    output.push_back(Token(t, potential));
+                    potential = "";
+                }
+            }
+            if (!str.empty()) {
+                auto t = Handler::determine_tk(str);
+                output.push_back(Token(t, str));
             }
             i++;
         } else {
@@ -136,7 +172,7 @@ inline TokenType Handler::determine_tk(const std::string &tk) {
         return TokenType::tk_mod;
     if (tk == "=")
         return TokenType::tk_equal;
-    if (tk == "!=")
+    if (tk == "/=")
         return TokenType::tk_not_equal;
     if (tk == "<")
         return TokenType::tk_less_than;
@@ -168,8 +204,12 @@ inline TokenType Handler::determine_tk(const std::string &tk) {
 
     if (tk == "\n")
         return TokenType::tk_newline;
-    if (tk == "identifier")
+    try {
+        stoi(tk);
+        return TokenType::tk_num;
+    } catch (std::invalid_argument) {
         return TokenType::tk_identifier;
+    }
 
     return TokenType::tk_identifier;
 }

@@ -1,4 +1,5 @@
 #include "json.hpp"
+#include "syntax_analyzer.cpp"
 #include "tokens/enums/token_type.h"
 #include "tokens/pars/pars_functions.h"
 #include "tokens/structs/token.h"
@@ -147,13 +148,13 @@ void Insert_to_output(std::vector<Token> &output, std::vector<Token> &result) {
     }
 }
 int main() {
-    std::ifstream inputfile("input.txt");
+    std::ifstream inputfile("input_for.txt");
     std::string fileContents((std::istreambuf_iterator<char>(inputfile)),
                              std::istreambuf_iterator<char>());
     std::vector<Token> output;
     std::string potential = "";
 
-    auto output = Handler::parse_tokens(fileContents);
+    output = Handler::parse_tokens(fileContents);
 
     nh::json json_output;
 
@@ -165,4 +166,7 @@ int main() {
     std::ofstream output_file("output.json");
     output_file << json_output.dump(4);
     output_file.close();
+
+    SyntaxAnalyzer syntaxAnalyzer(output);
+    syntaxAnalyzer.Analyze();
 }
