@@ -1,18 +1,17 @@
 #ifndef TYPE_H
 #define TYPE_H
 
-#include <string>
-#include <iostream>
 #include "node.h"
+#include <iostream>
+#include <string>
 
-class Type : public Node{
-public:
+class Type : public Node {
+  public:
     virtual ~Type() = default;
 
-
-    virtual void Print() const {
-        std::cout << "Type: " << ToString() << std::endl;
-    }
+    // virtual void Print() const {
+    //     std::cout << "Type: " << ToString() << std::endl;
+    // }
 };
 
 #endif // TYPE_H

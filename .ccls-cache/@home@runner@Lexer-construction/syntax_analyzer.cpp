@@ -31,7 +31,10 @@ class SyntaxAnalyzer {
 
     std::unique_ptr<Program> Analyze() {
         auto program = std::make_unique<Program>();
+        bool flag_terminated = false;
         while (currentIndex < tokens.size() && !errorOccurred) {
+            if (flag_terminated)
+                break;
             const Token &token = GetCurrentToken();
             switch (token.type) {
             case TokenType::tk_routine:
@@ -40,6 +43,9 @@ class SyntaxAnalyzer {
             case TokenType::tk_var:
             case TokenType::tk_type:
                 program->AddSimpleDeclaration(ParseSimpleDeclaration());
+                break;
+            case TokenType::tk_terminate:
+                flag_terminated = true;
                 break;
             default:
                 std::cerr << "Syntax error: Unexpected token '" << token.value
@@ -50,6 +56,105 @@ class SyntaxAnalyzer {
         }
         return program;
     }
+
+    std::string toStrin(TokenType token) {
+        switch (token) {
+        case TokenType::tk_routine:
+            return "tk_routine";
+        case TokenType::tk_type:
+            return "tk_type";
+        case TokenType::tk_is:
+            return "tk_is";
+        case TokenType::tk_var:
+            return "tk_var";
+        case TokenType::tk_end:
+            return "tk_end";
+        case TokenType::tk_for:
+            return "tk_for";
+        case TokenType::tk_loop:
+            return "tk_loop";
+        case TokenType::tk_in:
+            return "tk_in";
+        case TokenType::tk_while:
+            return "tk_while";
+        case TokenType::tk_if:
+            return "tk_if";
+        case TokenType::tk_then:
+            return "tk_then";
+        case TokenType::tk_else:
+            return "tk_else";
+        case TokenType::tk_integer:
+            return "tk_integer";
+        case TokenType::tk_boolean:
+            return "tk_boolean";
+        case TokenType::tk_real:
+            return "tk_real";
+        case TokenType::tk_record:
+            return "tk_record";
+        case TokenType::tk_array:
+            return "tk_array";
+        case TokenType::tk_true:
+            return "tk_true";
+        case TokenType::tk_false:
+            return "tk_false";
+        case TokenType::tk_reverse:
+            return "tk_reverse";
+
+        case TokenType::tk_add:
+            return "tk_add";
+        case TokenType::tk_subtract:
+            return "tk_subtract";
+        case TokenType::tk_multiply:
+            return "tk_multiply";
+        case TokenType::tk_divide:
+            return "tk_divide";
+        case TokenType::tk_and:
+            return "tk_and";
+        case TokenType::tk_or:
+            return "tk_or";
+        case TokenType::tk_xor:
+            return "tk_xor";
+        case TokenType::tk_mod:
+            return "tk_mod";
+        case TokenType::tk_equal:
+            return "tk_equal";
+        case TokenType::tk_not_equal:
+            return "tk_not_equal";
+        case TokenType::tk_less_than:
+            return "tk_less_than";
+        case TokenType::tk_greater_than:
+            return "tk_greater_than";
+        case TokenType::tk_less_than_equal:
+            return "tk_less_than_equal";
+        case TokenType::tk_greater_than_equal:
+            return "tk_greater_than_equal";
+        case TokenType::tk_assign:
+            return "tk_assign";
+
+        case TokenType::tk_open_parenthesis:
+            return "tk_open_parenthesis";
+        case TokenType::tk_close_parenthesis:
+            return "tk_close_parenthesis";
+        case TokenType::tk_open_bracket:
+            return "tk_open_bracket";
+        case TokenType::tk_close_bracket:
+            return "tk_close_bracket";
+        case TokenType::tk_colon:
+            return "tk_colon";
+        case TokenType::tk_comma:
+            return "tk_comma";
+        case TokenType::tk_dot:
+            return "tk_dot";
+        case TokenType::tk_range:
+            return "tk_range";
+        case TokenType::tk_newline:
+            return "tk_newline";
+        case TokenType::tk_identifier:
+            return "tk_identifier";
+        default:
+            return "Unknown token";
+        }
+    };
 
   private:
     const std::vector<Token> &tokens;
@@ -67,7 +172,7 @@ class SyntaxAnalyzer {
 
     bool ExpectToken(TokenType expectedType) {
         if (GetCurrentToken().type == expectedType) {
-            AdvanceToken();
+            // AdvanceToken();
             return true;
         } else {
             std::cerr << "Syntax error: Expected token type "
@@ -93,8 +198,10 @@ class SyntaxAnalyzer {
 
         std::vector<std::shared_ptr<ParameterDeclaration>> parameters;
         if (ExpectToken(TokenType::tk_open_parenthesis)) {
+            AdvanceToken();
             parameters = ParseParameters();
             ExpectToken(TokenType::tk_close_parenthesis);
+            AdvanceToken();
         }
 
         std::shared_ptr<Type> returnType = nullptr;
@@ -105,10 +212,12 @@ class SyntaxAnalyzer {
 
         std::shared_ptr<Body> body = nullptr;
         if (ExpectToken(TokenType::tk_is)) {
+            AdvanceToken();
             body = ParseBody();
         }
 
         ExpectToken(TokenType::tk_end);
+        AdvanceToken();
         return std::make_shared<RoutineDeclaration>(routineName, parameters,
                                                     returnType, body);
     }
@@ -139,12 +248,14 @@ class SyntaxAnalyzer {
 
         std::shared_ptr<Type> varType = nullptr;
         if (ExpectToken(TokenType::tk_colon)) {
+            AdvanceToken();
             varType = ParseType();
         }
 
         std::shared_ptr<Expression> initialValue = nullptr;
         if (GetCurrentToken().type == TokenType::tk_is) {
             AdvanceToken();
+
             initialValue = ParseExpression();
         }
 
@@ -195,10 +306,13 @@ class SyntaxAnalyzer {
             return nullptr;
 
         AdvanceToken(); // Пропускаем 'for'
+        std::cout << toStrin(GetCurrentToken().type) << " ";
 
         if (!ExpectToken(TokenType::tk_identifier)) {
             return nullptr;
         }
+        std::cout << toStrin(GetCurrentToken().type) << " ";
+        std::cout << GetCurrentToken().value << " ";
         auto loopVar = std::make_shared<Identifier>(GetCurrentToken().value);
         AdvanceToken();
 
@@ -245,6 +359,7 @@ class SyntaxAnalyzer {
             if (!ExpectToken(TokenType::tk_colon)) {
                 break;
             }
+            AdvanceToken();
             auto paramType = ParseType();
             parameters.push_back(
                 std::make_shared<ParameterDeclaration>(paramName, paramType));
@@ -275,6 +390,7 @@ class SyntaxAnalyzer {
 
         auto exprNode =
             std::make_shared<LiteralExpression>(GetCurrentToken().value);
+        AdvanceToken();
         AdvanceToken();
         return exprNode;
     }

@@ -22,20 +22,24 @@ class Body : public Statement {
         statements.push_back(statement);
     }
 
-    std::string ToString() const override {
-        std::string result = "{\n";
+    std::string ToString(int counter) const override {
+        std::string result = "";
+        for (int i = 0; i < counter; i++){
+            result += " ";
+        }
+        result += "Body:\n";
         for (const auto &decl : declarations) {
-            result += "  " + decl->ToString() + ";\n";
+            result += decl->ToString(counter + 2) + "\n";
         }
         for (const auto &stmt : statements) {
-            result += "  " + stmt->ToString() + ";\n";
+            result += stmt->ToString(counter + 2) + "\n";
         }
-        result += "}";
+        result += "";
         return result;
     }
 
     void Print() const override {
-        std::cout << "Body: " << ToString() << std::endl;
+        std::cout << "Body: " << ToString(0) << std::endl;
     }
 
   private:

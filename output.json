@@ -1,11 +1,63 @@
 [
     {
-        "type": "tk_var",
-        "value": "var"
+        "type": "tk_routine",
+        "value": "routine"
     },
     {
         "type": "tk_identifier",
-        "value": "sum"
+        "value": "AddOne"
+    },
+    {
+        "type": "tk_open_parenthesis",
+        "value": "("
+    },
+    {
+        "type": "tk_identifier",
+        "value": "x"
+    },
+    {
+        "type": "tk_colon",
+        "value": ":"
+    },
+    {
+        "type": "tk_integer",
+        "value": "integer"
+    },
+    {
+        "type": "tk_comma",
+        "value": ","
+    },
+    {
+        "type": "tk_identifier",
+        "value": "y"
+    },
+    {
+        "type": "tk_colon",
+        "value": ":"
+    },
+    {
+        "type": "tk_boolean",
+        "value": "boolean"
+    },
+    {
+        "type": "tk_comma",
+        "value": ","
+    },
+    {
+        "type": "tk_identifier",
+        "value": "z"
+    },
+    {
+        "type": "tk_colon",
+        "value": ":"
+    },
+    {
+        "type": "tk_real",
+        "value": "real"
+    },
+    {
+        "type": "tk_close_parenthesis",
+        "value": ")"
     },
     {
         "type": "tk_colon",
@@ -20,11 +72,139 @@
         "value": "is"
     },
     {
-        "type": "Unknown token",
-        "value": "0"
+        "type": "tk_newline",
+        "value": "\n"
+    },
+    {
+        "type": "tk_var",
+        "value": "var"
+    },
+    {
+        "type": "tk_identifier",
+        "value": "x"
+    },
+    {
+        "type": "tk_colon",
+        "value": ":"
+    },
+    {
+        "type": "tk_integer",
+        "value": "integer"
+    },
+    {
+        "type": "tk_is",
+        "value": "is"
+    },
+    {
+        "type": "tk_num",
+        "value": "1"
     },
     {
         "type": "tk_newline",
         "value": "\n"
+    },
+    {
+        "type": "tk_var",
+        "value": "var"
+    },
+    {
+        "type": "tk_identifier",
+        "value": "y"
+    },
+    {
+        "type": "tk_colon",
+        "value": ":"
+    },
+    {
+        "type": "tk_integer",
+        "value": "integer"
+    },
+    {
+        "type": "tk_is",
+        "value": "is"
+    },
+    {
+        "type": "tk_num",
+        "value": "2"
+    },
+    {
+        "type": "tk_newline",
+        "value": "\n"
+    },
+    {
+        "type": "tk_for",
+        "value": "for"
+    },
+    {
+        "type": "tk_identifier",
+        "value": "i"
+    },
+    {
+        "type": "tk_in",
+        "value": "in"
+    },
+    {
+        "type": "tk_num",
+        "value": "1"
+    },
+    {
+        "type": "tk_dot",
+        "value": "."
+    },
+    {
+        "type": "tk_dot",
+        "value": "."
+    },
+    {
+        "type": "tk_num",
+        "value": "5"
+    },
+    {
+        "type": "tk_loop",
+        "value": "loop"
+    },
+    {
+        "type": "tk_newline",
+        "value": "\n"
+    },
+    {
+        "type": "tk_identifier",
+        "value": "x"
+    },
+    {
+        "type": "tk_assign",
+        "value": ":="
+    },
+    {
+        "type": "tk_identifier",
+        "value": "y"
+    },
+    {
+        "type": "tk_add",
+        "value": "+"
+    },
+    {
+        "type": "tk_num",
+        "value": "1"
+    },
+    {
+        "type": "tk_newline",
+        "value": "\n"
+    },
+    {
+        "type": "tk_end",
+        "value": "end"
+    },
+    {
+        "type": "tk_newline",
+        "value": "\n"
+    },
+    {
+        "type": "tk_end",
+        "value": "end"
+    },
+    {
+        "type": "Unknown token",
+        "value": ""
     }
 ]

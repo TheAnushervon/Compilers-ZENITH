@@ -8,11 +8,12 @@
 class SimpleDeclaration : public Statement {
 public:
     virtual ~SimpleDeclaration() = default;
-    virtual std::string ToString() const override = 0;
+    virtual std::string ToString(int counter) const override = 0;
 
-    virtual void Print() const override {
-        std::cout << "SimpleDeclaration: " << ToString() << std::endl;
-    }
+    // virtual void Print() const override {
+    //     std::cout << "SimpleDeclaration: " << ToString(counter) << std::endl;
+    // }
+
 };
 
 #endif // SIMPLEDECLARATION_H

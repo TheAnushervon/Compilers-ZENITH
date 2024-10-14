@@ -11,10 +11,10 @@ public:
     explicit RecordType(const std::vector<std::shared_ptr<VariableDeclaration>>& members)
         : members(members) {}
 
-    std::string ToString() const override {
+    std::string ToString(int counter) const override {
         std::string result = "record { ";
         for (const auto& member : members) {
-            result += member->ToString() + "; ";
+            result += member->ToString(2) + "; ";
         }
         result += "} end";
         return result;

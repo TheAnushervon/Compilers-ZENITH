@@ -2,10 +2,8 @@
 #include "syntax_analyzer.cpp"
 #include "tokens/enums/token_type.h"
 #include "tokens/pars/pars_functions.h"
-#include "tokens/structs/token.h"
 #include <cctype>
 #include <fstream>
-#include <iostream>
 #include <vector>
 
 namespace nh = nlohmann;
@@ -102,6 +100,8 @@ std::string toString(TokenType token) {
         return "tk_range";
     case TokenType::tk_newline:
         return "tk_newline";
+    case TokenType::tk_num:
+        return "tk_num";
     case TokenType::tk_identifier:
         return "tk_identifier";
     default:
@@ -109,52 +109,14 @@ std::string toString(TokenType token) {
     }
 };
 
-bool is_simple_sign(char t) {
-    // removed t == '/', cause we have /=
-    // removed  t == '=', cause we have :=
-    // could be solved using stack when meet them
-    if (t == '+' || t == '-' || t == '*') {
-        return true;
-    }
-    return false;
-}
-bool is_factor(char t) {
-    // removed t == '/', cause we have /=
-    if (t == '*' || t == '%') {
-        return true;
-    }
-    return false;
-}
-
-// var x : integer
-// trigers : ' ', ':'
-
-// output.push_back(Token{determine_tk(string potential), potential});
-// std::pair<int,vector<TokenType>> var_hadler(&ptr_file, i){
-//   auto name ="";
-// while(ptr_file[i] != ' '){
-// name += ptr_file[i];
-// i++;
-//}
-// i+=3
-// auto type ="";
-//  while(ptr_file[i] != ' '){
-// type += ptr_file[i];
-// i++;
-//}
-void Insert_to_output(std::vector<Token> &output, std::vector<Token> &result) {
-    for (int i = 0; i < result.size(); i++) {
-        output.emplace_back(result[i].type, result[i].value);
-    }
-}
 int main() {
+
     std::ifstream inputfile("input_for.txt");
     std::string fileContents((std::istreambuf_iterator<char>(inputfile)),
                              std::istreambuf_iterator<char>());
-    std::vector<Token> output;
     std::string potential = "";
 
-    output = Handler::parse_tokens(fileContents);
+    auto output = Handler::parse_tokens(fileContents);
 
     nh::json json_output;
 
@@ -168,5 +130,7 @@ int main() {
     output_file.close();
 
     SyntaxAnalyzer syntaxAnalyzer(output);
-    syntaxAnalyzer.Analyze();
+    std::unique_ptr<Program> ast = syntaxAnalyzer.Analyze();
+    ast->Print();
+    
 }

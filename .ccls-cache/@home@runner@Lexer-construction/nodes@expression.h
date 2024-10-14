@@ -9,10 +9,10 @@ class Expression : public Node{
 public:
     virtual ~Expression() = default;
 
-    virtual std::string ToString() const override = 0;
+    virtual std::string ToString(int counter) const override = 0;
 
     virtual void Print() const {
-        std::cout << "Expression: " << ToString() << std::endl;
+        std::cout << "Expression: " << ToString(0) << std::endl;
     }
 };
 

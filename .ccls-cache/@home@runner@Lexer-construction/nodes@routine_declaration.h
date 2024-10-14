@@ -18,31 +18,35 @@ RoutineDeclaration(std::shared_ptr<Identifier> routineName,
                std::shared_ptr<Body> body = nullptr)
 : routineName(routineName), parameters(parameters), returnType(returnType), body(body) {}
 
-    std::string ToString() const override {
-        std::string result = "routine " + routineName->ToString() + "(";
-
-        for (size_t i = 0; i < parameters.size(); ++i) {
-            result += parameters[i]->ToString();
-            if (i < parameters.size() - 1) result += ", ";
+    std::string ToString(int counter) const override {
+        std::string result = "";
+        for (int i = 0; i < counter; i++){
+            result += " ";
         }
-        result += ")";
+        result += "Routine: " + routineName->ToString(counter) + "\n";
 
         if (returnType) {
-            result += " : " + returnType->ToString();
+            for (int i = 0; i < counter + 2; i++){
+                result += " ";
+            }
+            result += "Type: " + returnType->ToString(counter) + "\n";
         }
 
-        result += " is\n";
+        
+        for (size_t i = 0; i < parameters.size(); ++i) {
+            result+= parameters[i]->ToString(counter + 2);            
+        }
+        
 
         if (body) {
-            result += "  " + body->ToString();
+            result += body->ToString(counter + 2);
         }
 
-        result += "\nend";
         return result;
     }
 
     void Print() const {
-        std::cout << "RoutineDeclaration: " << ToString() << std::endl;
+        std::cout << "RoutineDeclaration: " << ToString(0) << std::endl;
     }
 
 private:

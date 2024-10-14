@@ -12,10 +12,10 @@ IfStatement(std::shared_ptr<Expression> condition,
         std::shared_ptr<Statement> falseBody = nullptr)
 : condition(condition), trueBody(trueBody), falseBody(falseBody) {}
 
-    std::string ToString() const override {
-        std::string result = "if " + condition->ToString() + " then " + trueBody->ToString();
+    std::string ToString(int counter) const override {
+        std::string result = "if " + condition->ToString(0) + " then " + trueBody->ToString(0);
         if (falseBody) {
-            result += " else " + falseBody->ToString();
+            result += " else " + falseBody->ToString(0);
         }
         result += " end";
         return result;

@@ -12,7 +12,7 @@ public:
         return name;
     }
 
-    std::string ToString() const override {
+    std::string ToString(int counter) const override {
         return name;
     }
     void Print() const {

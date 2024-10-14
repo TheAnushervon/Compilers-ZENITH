@@ -9,7 +9,7 @@ class PrimitiveType : public Type {
 
     explicit PrimitiveType(Kind kind) : kind(kind) {}
 
-    std::string ToString() const override {
+    std::string ToString(int counter) const override {
         switch (kind) {
         case Kind::Integer:
             return "integer";

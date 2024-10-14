@@ -13,9 +13,9 @@ public:
             std::shared_ptr<Expression> end, std::shared_ptr<Statement> body, bool reverse = false)
         : variable(variable), start(start), end(end), body(body), reverse(reverse) {}
 
-    std::string ToString() const override {
+    std::string ToString(int counter) const override {
         std::string direction = reverse ? "reverse " : "";
-        return "for " + variable->ToString() + " in " + direction + start->ToString() + " .. " + end->ToString() + " loop " + body->ToString() + " end";
+        return "for " + variable->ToString(0) + " in " + direction + start->ToString(0) + " .. " + end->ToString(0) + " loop " + body->ToString(0) + " end";
     }
 
 private:

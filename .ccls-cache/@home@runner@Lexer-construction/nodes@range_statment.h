@@ -12,9 +12,9 @@ public:
 Range(std::shared_ptr<Expression> start, std::shared_ptr<Expression> end)
         : start(start), end(end) {}
 
-    std::string ToString() const override {
-        return "Range(" + (start ? start->ToString() : "None") + " .. " +
-               (end ? end->ToString() : "None") + ")";
+    std::string ToString(int counter) const override {
+        return "Range(" + (start ? start->ToString(2) : "None") + " .. " +
+               (end ? end->ToString(2) : "None") + ")";
     }
 
     std::shared_ptr<Expression> GetStart() const { return start; }

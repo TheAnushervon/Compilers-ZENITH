@@ -9,10 +9,10 @@ class Statement : public Node {
 public:
     virtual ~Statement() = default;
 
-    virtual std::string ToString() const override = 0;
+    virtual std::string ToString(int counter) const override = 0;
 
     virtual void Print() const {
-        std::cout << "Statement: " << ToString() << std::endl;
+        std::cout << "Statement: " << ToString(2) << std::endl;
     }
 };
 
