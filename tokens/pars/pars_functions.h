@@ -109,6 +109,8 @@ Handler::parse_tokens(const std::string &fileContents) {
         output.push_back(Token(t, potential));
     }
 
+    output.push_back(Token(TokenType::tk_terminate, ""));
+
     return output;
 }
 

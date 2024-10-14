@@ -11,8 +11,8 @@ public:
     Assignment(std::shared_ptr<Identifier> variable, std::shared_ptr<Expression> expression)
         : variable(variable), expression(expression) {}
 
-    std::string ToString() const override {
-        return variable->ToString() + " := " + expression->ToString();
+    std::string ToString(int counter) const override {
+        return variable->ToString(2) + " := " + expression->ToString(2);
     }
 
 private:

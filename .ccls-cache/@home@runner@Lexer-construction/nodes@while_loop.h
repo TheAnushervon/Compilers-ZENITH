@@ -10,8 +10,8 @@ public:
     WhileLoop(std::shared_ptr<Expression> condition, std::shared_ptr<Statement> body)
         : condition(condition), body(body) {}
 
-    std::string ToString() const override {
-        return "while " + condition->ToString() + " loop " + body->ToString() + " end";
+    std::string ToString(int counter) const override {
+        return "while " + condition->ToString(2) + " loop " + body->ToString(2) + " end";
     }
 
 private:

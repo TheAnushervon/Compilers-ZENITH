@@ -7,7 +7,7 @@ class LiteralExpression : public Expression {
 public:
     LiteralExpression(const std::string& value) : value(value) {}
 
-    std::string ToString() const override {
+    std::string ToString(int counter) const override {
         return value;
     }
 

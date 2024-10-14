@@ -1,1 +1,7 @@
-var sum : integer is 0
+routine AddOne (x : integer, y: boolean, z: real) : integer is
+    var x : integer is 1
+    var y : integer is 2
+    for i in 1..5 loop
+        x := y + 1
+    end
+end

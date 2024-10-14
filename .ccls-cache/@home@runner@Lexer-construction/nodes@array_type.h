@@ -11,12 +11,12 @@ public:
     ArrayType(std::shared_ptr<Type> elementType, std::shared_ptr<Expression> size = nullptr)
         : elementType(elementType), size(size) {}
 
-    std::string ToString() const override {
+    std::string ToString(int counter) const override {
         std::string result = "array [";
         if (size) {
-            result += size->ToString();
+            result += size->ToString(2);
         }
-        result += "] of " + elementType->ToString();
+        result += "] of " + elementType->ToString(2);
         return result;
     }
 

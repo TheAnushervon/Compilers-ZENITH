@@ -31,10 +31,7 @@ class SyntaxAnalyzer {
 
     std::unique_ptr<Program> Analyze() {
         auto program = std::make_unique<Program>();
-        bool flag_terminated = false;
         while (currentIndex < tokens.size() && !errorOccurred) {
-            if (flag_terminated)
-                break;
             const Token &token = GetCurrentToken();
             switch (token.type) {
             case TokenType::tk_routine:
@@ -43,9 +40,6 @@ class SyntaxAnalyzer {
             case TokenType::tk_var:
             case TokenType::tk_type:
                 program->AddSimpleDeclaration(ParseSimpleDeclaration());
-                break;
-            case TokenType::tk_terminate:
-                flag_terminated = true;
                 break;
             default:
                 std::cerr << "Syntax error: Unexpected token '" << token.value
@@ -161,7 +155,10 @@ class SyntaxAnalyzer {
     size_t currentIndex;
     bool errorOccurred;
 
-    const Token &GetCurrentToken() const { return tokens[currentIndex]; }
+    const Token &GetCurrentToken() const {
+        std::cout << currentIndex << " ";
+        return tokens[currentIndex];
+    }
 
     const Token &AdvanceToken() {
         if (currentIndex < tokens.size() - 1) {
@@ -171,8 +168,10 @@ class SyntaxAnalyzer {
     }
 
     bool ExpectToken(TokenType expectedType) {
+        std::cout << toStrin(GetCurrentToken().type) << " "
+                  << toStrin(expectedType) << std::endl;
         if (GetCurrentToken().type == expectedType) {
-            // AdvanceToken();
+            AdvanceToken();
             return true;
         } else {
             std::cerr << "Syntax error: Expected token type "
@@ -198,10 +197,8 @@ class SyntaxAnalyzer {
 
         std::vector<std::shared_ptr<ParameterDeclaration>> parameters;
         if (ExpectToken(TokenType::tk_open_parenthesis)) {
-            AdvanceToken();
             parameters = ParseParameters();
             ExpectToken(TokenType::tk_close_parenthesis);
-            AdvanceToken();
         }
 
         std::shared_ptr<Type> returnType = nullptr;
@@ -212,17 +209,16 @@ class SyntaxAnalyzer {
 
         std::shared_ptr<Body> body = nullptr;
         if (ExpectToken(TokenType::tk_is)) {
-            AdvanceToken();
             body = ParseBody();
         }
 
         ExpectToken(TokenType::tk_end);
-        AdvanceToken();
         return std::make_shared<RoutineDeclaration>(routineName, parameters,
                                                     returnType, body);
     }
 
     std::shared_ptr<SimpleDeclaration> ParseSimpleDeclaration() {
+        std::cout << "im here" << std::endl;
         if (errorOccurred)
             return nullptr;
 
@@ -244,17 +240,18 @@ class SyntaxAnalyzer {
             return nullptr;
         }
         auto varName = std::make_shared<Identifier>(GetCurrentToken().value);
-        AdvanceToken();
+        std::cout << toStrin(GetCurrentToken().type);
+        // AdvanceToken();
 
         std::shared_ptr<Type> varType = nullptr;
         if (ExpectToken(TokenType::tk_colon)) {
-            AdvanceToken();
             varType = ParseType();
         }
 
         std::shared_ptr<Expression> initialValue = nullptr;
         if (GetCurrentToken().type == TokenType::tk_is) {
             AdvanceToken();
+            std::cout << toStrin(GetCurrentToken().type);
 
             initialValue = ParseExpression();
         }
@@ -306,13 +303,10 @@ class SyntaxAnalyzer {
             return nullptr;
 
         AdvanceToken(); // Пропускаем 'for'
-        std::cout << toStrin(GetCurrentToken().type) << " ";
 
         if (!ExpectToken(TokenType::tk_identifier)) {
             return nullptr;
         }
-        std::cout << toStrin(GetCurrentToken().type) << " ";
-        std::cout << GetCurrentToken().value << " ";
         auto loopVar = std::make_shared<Identifier>(GetCurrentToken().value);
         AdvanceToken();
 
@@ -359,7 +353,6 @@ class SyntaxAnalyzer {
             if (!ExpectToken(TokenType::tk_colon)) {
                 break;
             }
-            AdvanceToken();
             auto paramType = ParseType();
             parameters.push_back(
                 std::make_shared<ParameterDeclaration>(paramName, paramType));
@@ -385,13 +378,18 @@ class SyntaxAnalyzer {
     }
 
     std::shared_ptr<Expression> ParseExpression() {
+        std::cout << "im here" << std::endl;
         if (errorOccurred)
             return nullptr;
+        std::cout << " "
+                  << "im in there";
+        std::cout << toStrin(GetCurrentToken().type);
 
         auto exprNode =
             std::make_shared<LiteralExpression>(GetCurrentToken().value);
         AdvanceToken();
-        AdvanceToken();
+        std::cout << toStrin(GetCurrentToken().type);
+        
         return exprNode;
     }
 

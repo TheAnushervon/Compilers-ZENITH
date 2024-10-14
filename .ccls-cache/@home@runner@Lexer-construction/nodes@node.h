@@ -5,7 +5,7 @@
 
 class Node {
 public:
-    virtual std::string ToString() const = 0;
+    virtual std::string ToString(int counter) const = 0;
     virtual ~Node() = default;
 };
 
