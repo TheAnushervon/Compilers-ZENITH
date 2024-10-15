@@ -323,6 +323,12 @@ class SyntaxAnalyzer {
         AdvanceToken();
         AdvanceToken();
 
+        bool reverse = false;
+        if (GetCurrentToken().type == TokenType::tk_reverse) {
+            reverse = true;
+            AdvanceToken();
+        }
+
         auto range = ParseRange();
         if (!range) {
             return nullptr;
@@ -335,7 +341,8 @@ class SyntaxAnalyzer {
         ExpectToken(TokenType::tk_end);
         AdvanceToken();
         AdvanceToken();
-        return std::make_shared<ForLoop>(loopVar, startExpr, endExpr, body);
+        return std::make_shared<ForLoop>(loopVar, startExpr, endExpr, body,
+                                         reverse);
     }
 
     std::shared_ptr<WhileLoop> ParseWhileLoop() {
@@ -344,7 +351,10 @@ class SyntaxAnalyzer {
 
         AdvanceToken(); // Пропускаем 'while'
 
+        std::cout << toStrin(GetCurrentToken().type) << std::endl;
+
         auto condition = ParseExpression();
+        std::cout << toStrin(GetCurrentToken().type) << std::endl;
         auto body = ParseBody();
 
         ExpectToken(TokenType::tk_end);
