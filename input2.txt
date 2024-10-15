@@ -1,0 +1,12 @@
+while bool_true loop
+    var test : real is 3.4 
+end 
+
+while counter < 10 loop
+    var test : real is 3.4
+end
+
+while counter < counter_2 loop 
+    var test : real is 3.4 
+end 
+while Expression loop Body end

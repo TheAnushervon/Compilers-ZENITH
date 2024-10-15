@@ -1,0 +1,7 @@
+routine AddOne (x : integer, y: boolean, z: real) : integer is
+    var x : integer is 1
+    var y : integer is 2
+    for i in 1..5 loop
+        var z : integer is 3
+    end
+end
