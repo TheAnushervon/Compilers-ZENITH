@@ -148,12 +148,8 @@
         "value": "1"
     },
     {
-        "type": "tk_dot",
-        "value": "."
-    },
-    {
-        "type": "tk_dot",
-        "value": "."
+        "type": "tk_range",
+        "value": ".."
     },
     {
         "type": "tk_num",
@@ -168,24 +164,28 @@
         "value": "\n"
     },
     {
-        "type": "tk_identifier",
-        "value": "x"
-    },
-    {
-        "type": "tk_assign",
-        "value": ":="
+        "type": "tk_var",
+        "value": "var"
     },
     {
         "type": "tk_identifier",
-        "value": "y"
+        "value": "z"
     },
     {
-        "type": "tk_add",
-        "value": "+"
+        "type": "tk_colon",
+        "value": ":"
+    },
+    {
+        "type": "tk_integer",
+        "value": "integer"
+    },
+    {
+        "type": "tk_is",
+        "value": "is"
     },
     {
         "type": "tk_num",
-        "value": "1"
+        "value": "3"
     },
     {
         "type": "tk_newline",
@@ -204,7 +204,11 @@
         "value": "end"
     },
     {
-        "type": "Unknown token",
+        "type": "tk_newline",
+        "value": "\n"
+    },
+    {
+        "type": "tk_terminate",
         "value": ""
     }
 ]

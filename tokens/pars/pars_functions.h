@@ -41,8 +41,7 @@ Handler::parse_tokens(const std::string &fileContents) {
         if (currentChar == ' ' || currentChar == '\n' || currentChar == '(' ||
             currentChar == ')' || currentChar == '[' || currentChar == ']' ||
             currentChar == ':' || currentChar == '=' || currentChar == ',' ||
-            currentChar == '/' || currentChar == '<' || currentChar == '>' ||
-            currentChar == '.') {
+            currentChar == '/' || currentChar == '<' || currentChar == '>') {
 
             std::string str = "";
             if (currentChar != ' ') {

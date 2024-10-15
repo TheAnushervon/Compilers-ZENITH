@@ -218,6 +218,9 @@ class SyntaxAnalyzer {
 
         ExpectToken(TokenType::tk_end);
         AdvanceToken();
+        if (GetCurrentToken().type == TokenType::tk_newline) {
+            AdvanceToken();
+        }
         return std::make_shared<RoutineDeclaration>(routineName, parameters,
                                                     returnType, body);
     }
@@ -230,6 +233,9 @@ class SyntaxAnalyzer {
             return ParseVariableDeclaration();
         } else if (GetCurrentToken().type == TokenType::tk_type) {
             return ParseTypeDeclaration();
+        }
+        if (GetCurrentToken().type == TokenType::tk_newline) {
+            AdvanceToken();
         }
         return nullptr;
     }
@@ -257,6 +263,9 @@ class SyntaxAnalyzer {
             AdvanceToken();
 
             initialValue = ParseExpression();
+        }
+        if (GetCurrentToken().type == TokenType::tk_newline) {
+            AdvanceToken();
         }
 
         return std::make_shared<VariableDeclaration>(varName, varType,
@@ -306,14 +315,12 @@ class SyntaxAnalyzer {
             return nullptr;
 
         AdvanceToken(); // Пропускаем 'for'
-        std::cout << toStrin(GetCurrentToken().type) << " ";
 
         if (!ExpectToken(TokenType::tk_identifier)) {
             return nullptr;
         }
-        std::cout << toStrin(GetCurrentToken().type) << " ";
-        std::cout << GetCurrentToken().value << " ";
         auto loopVar = std::make_shared<Identifier>(GetCurrentToken().value);
+        AdvanceToken();
         AdvanceToken();
 
         auto range = ParseRange();
@@ -326,6 +333,8 @@ class SyntaxAnalyzer {
         auto body = ParseBody();
 
         ExpectToken(TokenType::tk_end);
+        AdvanceToken();
+        AdvanceToken();
         return std::make_shared<ForLoop>(loopVar, startExpr, endExpr, body);
     }
 
@@ -391,7 +400,7 @@ class SyntaxAnalyzer {
         auto exprNode =
             std::make_shared<LiteralExpression>(GetCurrentToken().value);
         AdvanceToken();
-        AdvanceToken();
+        /*AdvanceToken();*/
         return exprNode;
     }
 
