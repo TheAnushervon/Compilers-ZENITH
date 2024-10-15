@@ -19,21 +19,31 @@ class ForLoop : public Statement {
         for (int i = 0; i < counter; i++) {
             result += " ";
         }
-        std::string direction = reverse ? "reverse " : "";
         result += "ForLoop:\n";
         for (int i = 0; i < counter + 2; i++) {
             result += " ";
         }
-        result += "Variable: " + variable->ToString(counter) + "\n" + direction;
+        result += "Variable: " + variable->ToString(counter) + "\n";
         for (int i = 0; i < counter + 4; i++) {
             result += " ";
         }
-        result += "From:" + start->ToString(counter) + "\n";
-        for (int i = 0; i < counter + 4; i++) {
-            result += " ";
+
+        if (!reverse) {
+
+            result += "From: " + start->ToString(counter) + "\n";
+            for (int i = 0; i < counter + 4; i++) {
+                result += " ";
+            }
+            result += "To: " + end->ToString(counter) + "\n" +
+                      body->ToString(counter + 2);
+        } else {
+            result += "From: " + end->ToString(counter) + "\n";
+            for (int i = 0; i < counter + 4; i++) {
+                result += " ";
+            }
+            result += "To: " + start->ToString(counter) + "\n" +
+                      body->ToString(counter + 2);
         }
-        result +=
-            "To:" + end->ToString(counter) + "\n" + body->ToString(counter + 2);
 
         return result;
     }
