@@ -104,6 +104,8 @@ std::string toString(TokenType token) {
         return "tk_num";
     case TokenType::tk_identifier:
         return "tk_identifier";
+    case TokenType::tk_terminate:
+        return "tk_terminate";
     default:
         return "Unknown token";
     }
@@ -132,5 +134,4 @@ int main() {
     SyntaxAnalyzer syntaxAnalyzer(output);
     std::unique_ptr<Program> ast = syntaxAnalyzer.Analyze();
     ast->Print();
-    
 }
