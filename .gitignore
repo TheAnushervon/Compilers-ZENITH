@@ -31,28 +31,6 @@
 *.out
 *.app
 
-./main
-
-# Output
+main
 output.json
 
-# Configuration file
-.clang-format
-
-# Cache directory 
-.ccls-cache
-
-#project files of JetBrains IDE
-.idea/
-
-#project files of VS Code
-.vscode/ 
-
-#build artifacts
-build/ 
-
-#configuration from replit 
-replit.nix
-
-#auto-comp
-Makefile
