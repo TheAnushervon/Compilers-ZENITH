@@ -3,4 +3,7 @@ routine AddOne (x : integer, y: boolean, z: real) : integer is
     if a > 5 and a < 10 then
         var z : integer is 0
     end
+    while count > 0 loop
+        var x : integer is 0
+    end
 end

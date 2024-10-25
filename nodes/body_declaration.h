@@ -24,23 +24,23 @@ class Body : public Statement {
 
     std::string ToString(int counter) const override {
         std::string result = "";
-        for (int i = 0; i < counter; i++){
+        for (int i = 0; i < counter; i++) {
             result += " ";
         }
         result += "Body:\n";
         for (const auto &decl : declarations) {
             result += decl->ToString(counter + 2) + "\n";
         }
+        /*result += "\n";*/
         for (const auto &stmt : statements) {
             result += stmt->ToString(counter + 2) + "\n";
         }
+        /*result += "\n";*/
         result += "";
         return result;
     }
 
-    void Print() const override {
-        std::cout << "Body: " << ToString(0) << std::endl;
-    }
+    void Print() const override { std::cout << "Body: " << ToString(0); }
 
   private:
     std::vector<std::shared_ptr<SimpleDeclaration>> declarations;
