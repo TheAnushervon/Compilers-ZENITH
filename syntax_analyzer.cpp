@@ -417,13 +417,54 @@ class SyntaxAnalyzer {
 
         AdvanceToken(); // Пропускаем 'while'
 
+        std::string s = "";
+        while (GetCurrentToken().type != TokenType::tk_loop) {
+            /*if (GetCurrentToken().type == TokenType::tk_identifier) {*/
+            /*    auto varName =*/
+            /*        std::make_shared<Identifier>(GetCurrentToken().value);*/
+            /*    AdvanceToken();*/
+            /*}*/
+            /*auto firstOperand = ParseExpression();*/
+            /*if (validate_operator_token()) {*/
+            /*    auto operatorName =*/
+            /*        std::make_shared<Operator>(GetCurrentToken().value);*/
+            /*    AdvanceToken();*/
+            /*}*/
+            /*if (validate_operand()) {*/
+            /*    auto secondVarName =*/
+            /*        std::make_shared<Identifier>(GetCurrentToken().value);*/
+            /*    AdvanceToken();*/
+            /*}*/
+            /*auto secondOperand = ParseExpression();*/
+
+            s += GetCurrentToken().value + "-";
+
+            AdvanceToken();
+            if (validate_operator_token())
+                s += GetCurrentToken().value + "-";
+            else
+                return nullptr;
+
+            AdvanceToken();
+            s += GetCurrentToken().value;
+            AdvanceToken();
+            if (GetCurrentToken().type == TokenType::tk_or ||
+                GetCurrentToken().type == TokenType::tk_and) {
+                s += "-" + GetCurrentToken().value;
+                AdvanceToken();
+            }
+        }
+        AdvanceToken();
+
         std::cout << toStrin(GetCurrentToken().type) << std::endl;
 
-        auto condition = ParseExpression();
+        /*auto condition = ParseExpression();*/
         std::cout << toStrin(GetCurrentToken().type) << std::endl;
         auto body = ParseBody();
 
         ExpectToken(TokenType::tk_end);
+        AdvanceToken();
+        auto condition = std::make_shared<LiteralExpression>(s);
         return std::make_shared<WhileLoop>(condition, body);
     }
 
