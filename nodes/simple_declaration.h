@@ -2,17 +2,21 @@
 #define SIMPLEDECLARATION_H
 
 #include <string>
-#include <iostream>
-#include "statement.h"
+#include <memory>
+#include "node.h"
 
-class SimpleDeclaration : public Statement {
+class SimpleDeclaration : public Node {
 public:
-    virtual ~SimpleDeclaration() = default;
-    virtual std::string ToString(int counter) const override = 0;
 
-    // virtual void Print() const override {
-    //     std::cout << "SimpleDeclaration: " << ToString(counter) << std::endl;
-    // }
+SimpleDeclaration(std::shared_ptr<Node> childNode) : child(childNode) {}
+
+   std::string ToString(int counter) const override {
+       std::string y = "SimpleDeclaration: " + child->ToString(2);
+       return y;
+   }
+
+private:
+std::shared_ptr<Node> child;
 
 };
 

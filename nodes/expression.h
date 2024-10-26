@@ -2,18 +2,25 @@
 #define EXPRESSION_H
 
 #include <string>
-#include <iostream>
+#include <memory>
+#include <vector>
 #include "node.h"
 
 class Expression : public Node{
 public:
-    virtual ~Expression() = default;
+ Expression(const std::vector<std::shared_ptr<Node>>& relationsList) : relations(relationsList) {}
 
-    virtual std::string ToString(int counter) const override = 0;
-
-    virtual void Print() const {
-        std::cout << "Expression: " << ToString(0) << std::endl;
+std::string ToString(int count) const override {
+    std::string result = "Expression: ";
+    for (const auto& relation : relations) {
+        result += relation->ToString(count) + " ";
     }
+    return result;
+}
+
+private:
+//Relation { ( and | or | xor ) Relation }
+ std::vector<std::shared_ptr<Node>>relations;
 };
 
 #endif // EXPRESSION_H

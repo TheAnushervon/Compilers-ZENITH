@@ -1,41 +1,22 @@
 #ifndef PRIMITIVETYPE_H
 #define PRIMITIVETYPE_H
 
-#include "type.h"
+#include <memory>
+#include "node.h"
 
-class PrimitiveType : public Type {
+class PrimitiveType : public Node {
   public:
-    enum class Kind { Integer, Real, Boolean };
+PrimitiveType(const std::string& typeName) : name(typeName) {}
 
-    explicit PrimitiveType(Kind kind) : kind(kind) {}
+std::string ToString(int counter) const override {
+  std::string result = "PrimitiveType: " + name;
+  return result; 
+}
 
-    std::string ToString(int counter) const override {
-        switch (kind) {
-        case Kind::Integer:
-            return "integer";
-        case Kind::Real:
-            return "real";
-        case Kind::Boolean:
-            return "boolean";
-        default:
-            return "unknown";
-        }
-    }
-
-  private:
-    Kind kind;
+private:
+// int, real, bool
+std::string name;
 };
 
-inline PrimitiveType::Kind StringToKind(const std::string &str) {
-    if (str == "integer") {
-        return PrimitiveType::Kind::Integer;
-    } else if (str == "real") {
-        return PrimitiveType::Kind::Real;
-    } else if (str == "boolean") {
-        return PrimitiveType::Kind::Boolean;
-    } else {
-        throw std::invalid_argument("Unknown primitive type: " + str);
-    }
-}
 
 #endif // PRIMITIVETYPE_H

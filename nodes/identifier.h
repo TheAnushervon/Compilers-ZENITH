@@ -2,16 +2,16 @@
 #define IDENTIFIER_H
 
 #include "node.h"
-#include <iostream>
 #include <string>
 
 class Identifier : public Node {
   public:
-    explicit Identifier(const std::string &name) : name(name) {}
-    std::string GetName() const { return name; }
+     Identifier(const std::string &name) : name(name) {}
 
-    std::string ToString(int counter) const override { return name; }
-    void Print() const { std::cout << "Identifier: " << name << std::endl; }
+    std::string ToString(int counter) const override {
+      std::string result = "Identifiert: " + name;
+      return result; 
+    }
 
   private:
     std::string name;

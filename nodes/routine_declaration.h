@@ -1,59 +1,43 @@
 #ifndef ROUTINEDECLARATION_H
 #define ROUTINEDECLARATION_H
 
-#include "body_declaration.h"
-#include "identifier.h"
-#include "node.h"
-#include "parameter_declaration.h"
-#include "statement.h"
-#include "type.h"
 #include <memory>
 #include <vector>
+#include "node.h"
 
 class RoutineDeclaration : public Node {
-  public:
-    RoutineDeclaration(
-        std::shared_ptr<Identifier> routineName,
-        const std::vector<std::shared_ptr<ParameterDeclaration>> &parameters,
-        std::shared_ptr<Type> returnType = nullptr,
-        std::shared_ptr<Body> body = nullptr)
-        : routineName(routineName), parameters(parameters),
-          returnType(returnType), body(body) {}
+public:
+    RoutineDeclaration(std::shared_ptr<Node> identifier, 
+                       std::shared_ptr<Node> parameters, 
+                       std::shared_ptr<Node> returnType = nullptr, 
+                       std::shared_ptr<Node> body = nullptr)
+        : identifier(identifier), parameters(parameters), returnType(returnType), body(body) {}
 
     std::string ToString(int counter) const override {
-        std::string result = "";
-        for (int i = 0; i < counter; i++) {
-            result += " ";
-        }
-        result += "Routine: " + routineName->ToString(counter) + "\n";
+        std::string result = "RoutineDeclaration: ";
+        result += identifier->ToString(counter) + " ";
+        result += parameters->ToString(counter) + " ";
 
         if (returnType) {
-            for (int i = 0; i < counter + 2; i++) {
-                result += " ";
-            }
-            result += "Type: " + returnType->ToString(counter) + "\n";
-        }
-
-        for (size_t i = 0; i < parameters.size(); ++i) {
-            result += parameters[i]->ToString(counter + 2);
+            result += returnType->ToString(counter) + " ";
+        } else {
+            result += "void ";
         }
 
         if (body) {
-            result += body->ToString(counter + 2);
+            result += body->ToString(counter);
+        } else {
+            result += "No body";
         }
 
         return result;
     }
 
-    void Print() const {
-        std::cout << "RoutineDeclaration: " << ToString(0) << std::endl;
-    }
-
-  private:
-    std::shared_ptr<Identifier> routineName;
-    std::vector<std::shared_ptr<ParameterDeclaration>> parameters;
-    std::shared_ptr<Type> returnType;
-    std::shared_ptr<Body> body;
+private:
+    std::shared_ptr<Node> identifier;
+    std::shared_ptr<Node> parameters;
+    std::shared_ptr<Node> returnType;  
+    std::shared_ptr<Node> body;
 };
 
 #endif // ROUTINEDECLARATION_H
