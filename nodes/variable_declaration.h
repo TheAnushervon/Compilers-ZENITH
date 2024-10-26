@@ -1,42 +1,33 @@
 #ifndef VARIABLEDECLARATION_H
 #define VARIABLEDECLARATION_H
 
-#include "expression.h"
-#include "identifier.h"
-#include "simple_declaration.h"
-#include "type.h"
+#include "node.h"
 #include <memory>
 
-class VariableDeclaration : public SimpleDeclaration {
+class VariableDeclaration : public Node {
   public:
-    VariableDeclaration(std::shared_ptr<Identifier> identifier,
-                        std::shared_ptr<Type> type,
-                        std::shared_ptr<Expression> expression = nullptr)
+    VariableDeclaration(std::shared_ptr<Node> identifier,
+                        std::shared_ptr<Node> type = nullptr,
+                        std::shared_ptr<Node> expression = nullptr)
         : identifier(identifier), type(type), expression(expression) {}
 
     std::string ToString(int counter) const override {
-        std::string result = "";
-        for (int i = 0; i < counter; i++) {
-            result += " ";
+        std::string result = "VariableDeclaration :";
+        result += identifier->ToString(counter);
+        
+        if (type != nullptr) {
+            result += " = " + expression->ToString(counter);
         }
-        result += "Variable: " + identifier->ToString(2) + "\n";
-        for (int i = 0; i < counter + 2; i++) {
-            result += " ";
-        }
-        result += "Type: " + (type ? type->ToString(2) : "inferred") + "\n";
-        for (int i = 0; i < counter + 2; i++) {
-            result += " ";
-        }
-        if (expression) {
-            result += "Value: " + expression->ToString(2);
+        if (expression != nullptr) {
+            result += " = " + expression->ToString(counter);
         }
         return result;
     }
 
   private:
-    std::shared_ptr<Identifier> identifier;
-    std::shared_ptr<Type> type;
-    std::shared_ptr<Expression> expression;
+    std::shared_ptr<Node> identifier;
+    std::shared_ptr<Node> type;
+    std::shared_ptr<Node> expression;
 };
 
 #endif // VARIABLEDECLARATION_H

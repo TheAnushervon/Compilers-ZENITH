@@ -3,25 +3,21 @@
 
 #include <vector>
 #include <memory>
-#include "type.h"
-#include "variable_declaration.h"
+#include "node.h"
 
-class RecordType : public Type {
+class RecordType : public Node {
 public:
-    explicit RecordType(const std::vector<std::shared_ptr<VariableDeclaration>>& members)
-        : members(members) {}
+     RecordType(std::shared_ptr<Node> childNode) : child(childNode) {}
 
     std::string ToString(int counter) const override {
-        std::string result = "record { ";
-        for (const auto& member : members) {
-            result += member->ToString(2) + "; ";
-        }
-        result += "} end";
+        std::string result = "record: ";
+        result += child->ToString(2);
         return result;
     }
 
 private:
-    std::vector<std::shared_ptr<VariableDeclaration>> members; // Члены записи
+    //VariableDeclaration
+    std::shared_ptr<Node> child; 
 };
 
 #endif // RECORDTYPE_H

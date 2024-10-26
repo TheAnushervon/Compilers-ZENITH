@@ -1,39 +1,23 @@
 #ifndef WHILELOOP_H
 #define WHILELOOP_H
 
-#include "expression.h"
-#include "statement.h"
+#include "node.h"
 #include <memory>
 
-class WhileLoop : public Statement {
+class WhileLoop : public Node {
   public:
-    WhileLoop(std::shared_ptr<Expression> condition,
-              std::shared_ptr<Statement> body)
-        : condition(condition), body(body) {}
+  WhileLoop(std::shared_ptr<Node> expr, std::shared_ptr<Node> bodyNode)
+  : expression(expr), body(bodyNode) {}
 
     std::string ToString(int counter) const override {
-        std::string result = "";
-        for (int i = 0; i < counter; i++) {
-            result += " ";
-        }
-        result += "WhileLoop:\n";
-        for (int i = 0; i < counter + 2; i++) {
-            result += " ";
-        }
-        result += "Condition:\n";
-
-        for (int i = 0; i < counter + 4; i++) {
-            result += " ";
-        }
-
-        result +=
-            condition->ToString(counter) + "\n" + body->ToString(counter + 2);
+        std::string result = "WhileLoop: " +expression->ToString(counter) + " " + body->ToString(counter);
         return result;
     }
 
   private:
-    std::shared_ptr<Expression> condition;
-    std::shared_ptr<Statement> body;
+    //while Expression loop Body end
+    std::shared_ptr<Node> expression;
+    std::shared_ptr<Node> body;
 };
 
 #endif // WHILELOOP_H

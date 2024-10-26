@@ -8,8 +8,8 @@
 
 class ParameterDeclaration : public Node {
   public:
-    ParameterDeclaration(std::shared_ptr<Identifier> identifier,
-                         std::shared_ptr<Type> type)
+    ParameterDeclaration(std::shared_ptr<Node> identifier,
+                         std::shared_ptr<Node> type)
         : identifier(identifier), type(type) {}
 
     std::string ToString(int counter) const override {
@@ -24,13 +24,9 @@ class ParameterDeclaration : public Node {
         return result += "Type: " + type->ToString(counter) + "\n";
     }
 
-    void Print() const {
-        std::cout << "ParameterDeclaration: " << ToString(2) << std::endl;
-    }
-
   private:
-    std::shared_ptr<Identifier> identifier;
-    std::shared_ptr<Type> type;
+    std::shared_ptr<Node> identifier;
+    std::shared_ptr<Node> type;
 };
 
 #endif // PARAMETERDECLARATION_H

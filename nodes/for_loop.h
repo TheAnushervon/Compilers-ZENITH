@@ -1,59 +1,27 @@
 #ifndef FORLOOP_H
 #define FORLOOP_H
 
-#include "expression.h"
-#include "identifier.h"
-#include "statement.h"
+#include "node.h"
 #include <memory>
-// check
-class ForLoop : public Statement {
+
+class ForLoop : public Node {
   public:
-    ForLoop(std::shared_ptr<Identifier> variable,
-            std::shared_ptr<Expression> start, std::shared_ptr<Expression> end,
-            std::shared_ptr<Statement> body, bool reverse = false)
-        : variable(variable), start(start), end(end), body(body),
-          reverse(reverse) {}
+  ForLoop(std::shared_ptr<Node> id, std::shared_ptr<Node> rng, std::shared_ptr<Node> bdy)
+  : identifier(id), range(rng), body(bdy) {}
 
     std::string ToString(int counter) const override {
-        std::string result = "";
-        for (int i = 0; i < counter; i++) {
-            result += " ";
-        }
-        result += "ForLoop:\n";
-        for (int i = 0; i < counter + 2; i++) {
-            result += " ";
-        }
-        result += "Variable: " + variable->ToString(counter) + "\n";
-        for (int i = 0; i < counter + 4; i++) {
-            result += " ";
-        }
-
-        if (!reverse) {
-
-            result += "From: " + start->ToString(counter) + "\n";
-            for (int i = 0; i < counter + 4; i++) {
-                result += " ";
-            }
-            result += "To: " + end->ToString(counter) + "\n" +
-                      body->ToString(counter + 2);
-        } else {
-            result += "From: " + end->ToString(counter) + "\n";
-            for (int i = 0; i < counter + 4; i++) {
-                result += " ";
-            }
-            result += "To: " + start->ToString(counter) + "\n" +
-                      body->ToString(counter + 2);
-        }
-
+        std::string result = "ForLoop: "+identifier->ToString( counter)
+        +range->ToString(counter)
+        +body->ToString(counter);
+        
         return result;
     }
 
   private:
-    std::shared_ptr<Identifier> variable;
-    std::shared_ptr<Expression> start;
-    std::shared_ptr<Expression> end;
-    std::shared_ptr<Statement> body;
-    bool reverse;
+ //for Identifier Range loop Body end 
+    std::shared_ptr<Node> identifier;
+    std::shared_ptr<Node> range;
+    std::shared_ptr<Node> body;
 };
 
 #endif // FORLOOP_H
