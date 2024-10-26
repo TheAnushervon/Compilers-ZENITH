@@ -29,7 +29,10 @@ class IfStatement : public Statement {
 
         result += trueBody->ToString(counter + 2);
         if (falseBody) {
-            result += " else " + falseBody->ToString(counter);
+            for (int i = 0; i < counter + 2; i++) {
+                result += " ";
+            }
+            result += "Else:\n" + falseBody->ToString(counter + 4);
         }
         return result;
     }

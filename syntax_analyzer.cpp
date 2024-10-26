@@ -360,12 +360,16 @@ class SyntaxAnalyzer {
 
         if (ExpectToken(TokenType::tk_then)) {
             AdvanceToken();
+
+            std::cout << GetCurrentToken().value << std::endl;
             thenBody = ParseBody();
             /*AdvanceToken();*/
         }
 
         if (GetCurrentToken().type == TokenType::tk_else) {
             AdvanceToken();
+
+            std::cout << "y" << GetCurrentToken().value << std::endl;
             elseBody = ParseBody();
         }
 
@@ -547,8 +551,9 @@ class SyntaxAnalyzer {
         std::vector<std::shared_ptr<Statement>> statements;
         std::vector<std::shared_ptr<SimpleDeclaration>> declarations;
 
+        bool flag = true;
         while (GetCurrentToken().type != TokenType::tk_end &&
-               currentIndex < tokens.size()) {
+               currentIndex < tokens.size() && flag == true) {
             switch (GetCurrentToken().type) {
             case TokenType::tk_var:
                 statements.push_back(ParseVariableDeclaration());
@@ -558,6 +563,10 @@ class SyntaxAnalyzer {
                 break;
             case TokenType::tk_for:
                 statements.push_back(ParseForLoop());
+                break;
+            case TokenType::tk_else:
+                /*AdvanceToken();*/
+                flag = false;
                 break;
             case TokenType::tk_while:
                 statements.push_back(ParseWhileLoop());
