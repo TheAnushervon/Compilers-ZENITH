@@ -41,6 +41,7 @@ class SyntaxAnalyzer {
             case TokenType::tk_routine:
                 program->AddRoutineDeclaration(ParseRoutine());
                 break;
+            case TokenType::tk_identifier:
             case TokenType::tk_var:
             case TokenType::tk_type:
                 program->AddSimpleDeclaration(ParseSimpleDeclaration());
@@ -229,7 +230,9 @@ class SyntaxAnalyzer {
     std::shared_ptr<SimpleDeclaration> ParseSimpleDeclaration() {
         if (errorOccurred)
             return nullptr;
-
+        if (GetCurrentToken().type == TokenType::tk_identifier) {
+            return ParseAssignmentDeclaration();
+        }
         if (GetCurrentToken().type == TokenType::tk_var) {
             return ParseVariableDeclaration();
         } else if (GetCurrentToken().type == TokenType::tk_type) {
@@ -240,6 +243,16 @@ class SyntaxAnalyzer {
         }
         return nullptr;
     }
+  std::shared_ptr<Assignment> ParseAssignmentDeclaration() {
+    if (errorOccurred){ return nullptr; } 
+
+    auto variable = std::make_shared<Identifier>(GetCurrentToken().value);
+    AdvanceToken();
+    AdvanceToken(); 
+    auto expression = std::make_shared<LiteralExpression>(GetCurrentToken().value);
+    AdvanceToken(); 
+    return std::make_shared<Assignment>(variable, expression);
+}
 
     std::shared_ptr<VariableDeclaration> ParseVariableDeclaration() {
         if (errorOccurred)

@@ -1,11 +1,2 @@
-routine AddOne (x : integer, y: boolean, z: real) : integer is
-    var a : integer is 10
-    if a > 5 and a < 10 then
-        var z : integer is 0
-    else
-        var y : integer is 5
-    end
-    while count > 0 loop
-        var x : integer is 0
-    end
-end
+var a : integer is 10
+a:=5
