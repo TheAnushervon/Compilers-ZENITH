@@ -5,6 +5,7 @@
 #include <cctype>
 #include <fstream>
 #include <vector>
+#include "type_checker.cpp"
 
 namespace nh = nlohmann;
 
@@ -121,7 +122,7 @@ int main() {
     auto output = Handler::parse_tokens(fileContents);
 
     for (int i = 0; i < output.size(); i++) {
-        if (output[i].type == TokenType::tk_newline) {
+        if (output[i].type == TokenType::tk_newline ) {
             output.erase(output.begin() + i);
         }
     }
@@ -138,6 +139,10 @@ int main() {
     output_file.close();
 
     SyntaxAnalyzer syntaxAnalyzer(output);
-    std::unique_ptr<Program> ast = syntaxAnalyzer.Analyze();
+    std::unique_ptr<Node> ast = syntaxAnalyzer.Analyze();
     std::cout << ast->ToString(2) << std::endl;
+
+    TypeChecker *tc = new TypeChecker();
+    tc->GlobalAndRoutineScopeTypeCheck(ast);
+    
 }
