@@ -51,6 +51,7 @@ class SyntaxAnalyzer {
                 break;
 
             const Token &token = GetCurrentToken();
+           // std::cout << "cur_token : " << toStrin(token.type) << std::endl;
 
             switch (token.type) {
             case TokenType::tk_routine: {
@@ -69,7 +70,7 @@ class SyntaxAnalyzer {
             case TokenType::tk_type: {
                 auto simpleDecl = ParseSimpleDeclaration();
                 if (!simpleDecl) {
-                    std::cerr << "Error: Failed to parse simple declaration.\n";
+                    std::cerr << "Error: Failed to parse simple declaration.\n" << toStrin(GetCurrentToken().type) << " " <<GetCurrentToken().value;
                     return nullptr;
                 }
                 program->AddSimpleDeclaration(simpleDecl);
@@ -355,8 +356,10 @@ class SyntaxAnalyzer {
         std::vector<std::shared_ptr<Node>> parameters;
 
         auto param = ParseParameterDeclaration();
+        if (!param && GetCurrentToken().type == TokenType::tk_close_parenthesis) {
+             return std::make_shared<Parameters>(parameters);
+        }
         if (!param) {
-             
             return nullptr;
         }
         parameters.push_back(param);
