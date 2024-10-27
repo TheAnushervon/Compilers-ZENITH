@@ -1,2 +1,1 @@
 var a : integer is 10
-a:=5
