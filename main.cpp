@@ -133,5 +133,6 @@ int main() {
 
     SyntaxAnalyzer syntaxAnalyzer(output);
     std::unique_ptr<Program> ast = syntaxAnalyzer.Analyze();
-    ast->Print();
+    std::cout << ast->ToString(2) << std::endl;
+
 }

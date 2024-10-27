@@ -7,6 +7,12 @@
 
 class RoutineDeclaration : public Node {
 public:
+
+    std::shared_ptr<Node> identifier;
+    std::shared_ptr<Node> parameters;
+    std::shared_ptr<Node> returnType;  
+    std::shared_ptr<Node> body;
+
     RoutineDeclaration(std::shared_ptr<Node> identifier, 
                        std::shared_ptr<Node> parameters, 
                        std::shared_ptr<Node> returnType = nullptr, 
@@ -32,12 +38,6 @@ public:
 
         return result;
     }
-
-private:
-    std::shared_ptr<Node> identifier;
-    std::shared_ptr<Node> parameters;
-    std::shared_ptr<Node> returnType;  
-    std::shared_ptr<Node> body;
 };
 
 #endif // ROUTINEDECLARATION_H

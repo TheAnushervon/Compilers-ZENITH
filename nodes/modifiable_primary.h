@@ -8,6 +8,12 @@
 
 class ModifiablePrimary : public Node {
 public:
+    // Identifier { . Identifier | [ Expression ] }
+    std::shared_ptr<Node> identifier;
+    //по сути это Identifier
+    std::shared_ptr<Node> specialIdentifier;  
+    std::shared_ptr<Node> expression; 
+
     ModifiablePrimary() : identifier(nullptr), specialIdentifier(nullptr), expression(nullptr) {}
 
     std::string ToString(int counter) const override {
@@ -20,13 +26,7 @@ public:
         }
         return result;
     }
-
-private:
-    // Identifier { . Identifier | [ Expression ] }
-    std::shared_ptr<Node> identifier;
-    //по сути это Identifier
-    std::shared_ptr<Node> specialIdentifier;  
-    std::shared_ptr<Node> expression;         
+        
 };
 
 #endif // MODIFIABLE_PRIMARY_H

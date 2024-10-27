@@ -7,17 +7,19 @@
 
 class RecordType : public Node {
 public:
-     RecordType(std::shared_ptr<Node> childNode) : child(childNode) {}
+    std::vector<std::shared_ptr<Node>> members;
+
+    RecordType(const std::vector<std::shared_ptr<Node>>& members) 
+        : members(members) {}
 
     std::string ToString(int counter) const override {
-        std::string result = "record: ";
-        result += child->ToString(2);
+        std::string result = "RecordType: ";
+        for (const auto& member : members) {
+            result += member->ToString(counter) + "\n";
+        }
         return result;
     }
-
-private:
-    //VariableDeclaration
-    std::shared_ptr<Node> child; 
 };
+
 
 #endif // RECORDTYPE_H

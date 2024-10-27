@@ -6,8 +6,11 @@
 
 class Assignment : public Node {
   public:
+    //: ModifiablePrimary := Expression 
+    std::shared_ptr<Node> modifiablePrimary;
+    std::shared_ptr<Node> expression;
 
-Assignment(std::shared_ptr<Node> modifiablePrim, std::shared_ptr<Node> expr)
+    Assignment(std::shared_ptr<Node> modifiablePrim, std::shared_ptr<Node> expr)
     : modifiablePrimary(modifiablePrim), expression(expr) {}
 
     std::string ToString(int counter) const override {
@@ -16,11 +19,6 @@ Assignment(std::shared_ptr<Node> modifiablePrim, std::shared_ptr<Node> expr)
 
         return result;
     }
-
-  private:
-//: ModifiablePrimary := Expression 
-    std::shared_ptr<Node> modifiablePrimary;
-    std::shared_ptr<Node> expression;
 };
 
 #endif // ASSIGNMENT_H

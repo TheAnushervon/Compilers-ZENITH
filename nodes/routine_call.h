@@ -7,6 +7,9 @@
 
 class RoutineCall : public Node {
 public:
+
+    std::shared_ptr<Node> identifier;              
+    std::vector<std::shared_ptr<Node>> expressions;
     RoutineCall(std::shared_ptr<Node> id,                 std::vector<std::shared_ptr<Node>> exprs)
 : identifier(id), expressions(exprs) {}
 
@@ -18,11 +21,7 @@ public:
             result += item->ToString(counter);
         }
         return result;
-    }
-
-private:
-    std::shared_ptr<Node> identifier;              
-    std::vector<std::shared_ptr<Node>> expressions;   
+    }   
 };
 
 #endif // ROUTINECALL_H

@@ -7,16 +7,16 @@
 
 class SimpleDeclaration : public Node {
 public:
+    std::shared_ptr<Node> child;
 
-SimpleDeclaration(std::shared_ptr<Node> childNode) : child(childNode) {}
+    SimpleDeclaration(std::shared_ptr<Node> childNode) : child(childNode) {}
 
    std::string ToString(int counter) const override {
        std::string y = "SimpleDeclaration: " + child->ToString(2);
        return y;
    }
 
-private:
-std::shared_ptr<Node> child;
+
 
 };
 

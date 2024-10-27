@@ -7,7 +7,10 @@
 
 class Factor : public Node {
 public:
-Factor(const std::vector<std::shared_ptr<Node>>& summandsList) : summands(summandsList) {}
+    // Summand { ( + | - ) Summand } 
+    std::vector<std::shared_ptr<Node>> summands; 
+
+    Factor(const std::vector<std::shared_ptr<Node>>& summandsList) : summands(summandsList) {}
 
     std::string ToString(int counter) const override {
         std::string result;
@@ -19,10 +22,6 @@ Factor(const std::vector<std::shared_ptr<Node>>& summandsList) : summands(summan
         }
         return result;
     }
-
-private:
-// Summand { ( + | - ) Summand } 
-    std::vector<std::shared_ptr<Node>> summands; 
 };
 
 #endif // FACTOR_H

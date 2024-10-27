@@ -6,6 +6,10 @@
 
 class TypeDeclaration : public Node {
 public:
+
+    std::shared_ptr<Node> identifier;
+    std::shared_ptr<Node> type;
+
     TypeDeclaration(std::shared_ptr<Node> identifier, std::shared_ptr<Node> type)
         : identifier(identifier), type(type) {}
 
@@ -13,9 +17,6 @@ public:
         return "type " + identifier->ToString(2) + " is " + type->ToString(2);
     }
 
-private:
-    std::shared_ptr<Node> identifier;
-    std::shared_ptr<Node> type;
 };
 
 #endif // TYPEDECLARATION_H

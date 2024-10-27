@@ -7,19 +7,18 @@
 
 class Primary : public Node {
 public:
-     Primary(std::shared_ptr<Node> childNode) : child(childNode) {}
+    // : IntegralLiteral 
+    //| RealLiteral 
+    //| true | false 
+    //| ModifiablePrimary 
+    std::shared_ptr<Node> child;
+
+    Primary(std::shared_ptr<Node> childNode) : child(childNode) {}
 
     std::string ToString(int counter) const override {
         std::string result = "Primary: " + child->ToString(counter);
         return result;
-    }
-
-private:
-// : IntegralLiteral 
-//| RealLiteral 
-//| true | false 
-//| ModifiablePrimary 
-    std::shared_ptr<Node> child; 
+    } 
 };
 
 #endif // Primary_H
