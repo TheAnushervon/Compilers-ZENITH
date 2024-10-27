@@ -1,1 +1,3 @@
-var a : integer is 10
+routine CheckAndPrintSolution(a: real, b: real) is
+    var solution: real is 5
+end

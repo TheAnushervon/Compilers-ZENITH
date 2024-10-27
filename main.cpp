@@ -120,6 +120,12 @@ int main() {
 
     auto output = Handler::parse_tokens(fileContents);
 
+    for (int i = 0; i < output.size(); i++) {
+        if (output[i].type == TokenType::tk_newline) {
+            output.erase(output.begin() + i);
+        }
+    }
+
     nh::json json_output;
 
     for (int i = 0; i < output.size(); i++) {
@@ -134,5 +140,4 @@ int main() {
     SyntaxAnalyzer syntaxAnalyzer(output);
     std::unique_ptr<Program> ast = syntaxAnalyzer.Analyze();
     std::cout << ast->ToString(2) << std::endl;
-
 }
