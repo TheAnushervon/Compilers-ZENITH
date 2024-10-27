@@ -1,23 +1,33 @@
 #include "nodes/array_type.h"
 #include "nodes/assignment.h"
-#include "nodes/body_declaration.h"
+#include "nodes/body.h"
 #include "nodes/expression.h"
+#include "nodes/factor.h"
 #include "nodes/for_loop.h"
 #include "nodes/identifier.h"
 #include "nodes/if_statement.h"
-#include "nodes/literal_expression.h"
-#include "nodes/operator.h"
+#include "nodes/modifiable_primary.h"
+#include "nodes/node.h"
 #include "nodes/parameter_declaration.h"
+#include "nodes/parametrs.h"
+#include "nodes/primary.h"
 #include "nodes/primitive_type.h"
 #include "nodes/program.h"
-#include "nodes/range_statment.h"
+#include "nodes/range.h"
 #include "nodes/record_type.h"
+#include "nodes/relation.h"
 #include "nodes/routine_call.h"
 #include "nodes/routine_declaration.h"
+#include "nodes/simple_declaration.h"
+#include "nodes/simple.h"
 #include "nodes/statement.h"
+#include "nodes/summand.h"
 #include "nodes/type_declaration.h"
+#include "nodes/type.h"
+#include "nodes/user_type.h"
 #include "nodes/variable_declaration.h"
 #include "nodes/while_loop.h"
+
 #include "tokens/enums/token_type.h"
 #include "tokens/structs/token.h"
 #include <iostream>
@@ -185,7 +195,72 @@ class SyntaxAnalyzer {
         }
     }
 
-    std::shared_ptr<RoutineDeclaration> ParseRoutine() {
+    std::shared_ptr<Node> ParseSimpleDeclaration() {
+        if (errorOccurred)
+            return nullptr;
+        if (GetCurrentToken().type == TokenType::tk_identifier) {
+            return ParseAssignment();
+        }
+        if (GetCurrentToken().type == TokenType::tk_var) {
+            return ParseVariableDeclaration();
+        } else if (GetCurrentToken().type == TokenType::tk_type) {
+            return ParseTypeDeclaration();
+        }
+        if (GetCurrentToken().type == TokenType::tk_newline) {
+            AdvanceToken();
+        }
+        return nullptr;
+    }
+
+std::shared_ptr<Node> ParseVariableDeclaration() {
+    if (errorOccurred)
+        return nullptr;
+
+    AdvanceToken(); // Пропускаем 'var'
+
+    if (!ExpectToken(TokenType::tk_identifier)) {
+        return nullptr;
+    }
+    auto varName = std::make_shared<Identifier>(GetCurrentToken().value);
+    AdvanceToken();
+
+    std::shared_ptr<Type> varType = nullptr;
+    if (ExpectToken(TokenType::tk_colon)) {
+        AdvanceToken();
+        varType = ParseType();
+    }
+
+    std::shared_ptr<Expression> initialValue = nullptr;
+    if (GetCurrentToken().type == TokenType::tk_is) {
+        AdvanceToken();
+
+        initialValue = ParseExpression();
+    }
+    if (GetCurrentToken().type == TokenType::tk_newline) {
+        AdvanceToken();
+    }
+
+    return std::make_shared<VariableDeclaration>(varName, varType,
+                                                 initialValue);
+}
+
+    std::shared_ptr<Node> ParseTypeDeclaration() {
+        if (errorOccurred)
+            return nullptr;
+
+        AdvanceToken(); // Пропускаем 'type'
+
+        if (!ExpectToken(TokenType::tk_identifier)) {
+            return nullptr;
+        }
+        auto typeName = std::make_shared<Identifier>(GetCurrentToken().value);
+        AdvanceToken();
+
+        auto type = ParseType();
+        return std::make_shared<TypeDeclaration>(typeName, type);
+    }
+
+    std::shared_ptr<Node> ParseRoutineDeclaration() {
         if (errorOccurred)
             return nullptr;
 
@@ -194,11 +269,12 @@ class SyntaxAnalyzer {
         if (!ExpectToken(TokenType::tk_identifier)) {
             return nullptr;
         }
+        //get Identifier
         auto routineName =
-            std::make_shared<Identifier>(GetCurrentToken().value);
+            std::make_shared<Node>(GetCurrentToken().value);
         AdvanceToken();
 
-        std::vector<std::shared_ptr<ParameterDeclaration>> parameters;
+        std::vector<std::shared_ptr<Node>> parameters;
         if (ExpectToken(TokenType::tk_open_parenthesis)) {
             AdvanceToken();
             parameters = ParseParameters();
@@ -227,208 +303,140 @@ class SyntaxAnalyzer {
                                                     returnType, body);
     }
 
-    std::shared_ptr<SimpleDeclaration> ParseSimpleDeclaration() {
+    std::vector<std::shared_ptr<Node>> ParseParameters() {
         if (errorOccurred)
-            return nullptr;
-        if (GetCurrentToken().type == TokenType::tk_identifier) {
-            return ParseAssignmentDeclaration();
-        }
-        if (GetCurrentToken().type == TokenType::tk_var) {
-            return ParseVariableDeclaration();
-        } else if (GetCurrentToken().type == TokenType::tk_type) {
-            return ParseTypeDeclaration();
-        }
-        if (GetCurrentToken().type == TokenType::tk_newline) {
-            AdvanceToken();
-        }
-        return nullptr;
-    }
-  std::shared_ptr<Assignment> ParseAssignmentDeclaration() {
-    if (errorOccurred){ return nullptr; } 
+            return {};
 
-    auto variable = std::make_shared<Identifier>(GetCurrentToken().value);
-    AdvanceToken();
-    AdvanceToken(); 
-    auto expression = std::make_shared<LiteralExpression>(GetCurrentToken().value);
-    AdvanceToken(); 
-    return std::make_shared<Assignment>(variable, expression);
-}
+        std::vector<std::shared_ptr<ParameterDeclaration>> parameters;
 
-    std::shared_ptr<VariableDeclaration> ParseVariableDeclaration() {
-        if (errorOccurred)
-            return nullptr;
-
-        AdvanceToken(); // Пропускаем 'var'
-
-        if (!ExpectToken(TokenType::tk_identifier)) {
-            return nullptr;
-        }
-        auto varName = std::make_shared<Identifier>(GetCurrentToken().value);
-        AdvanceToken();
-
-        std::shared_ptr<Type> varType = nullptr;
-        if (ExpectToken(TokenType::tk_colon)) {
-            AdvanceToken();
-            varType = ParseType();
-        }
-
-        std::shared_ptr<Expression> initialValue = nullptr;
-        if (GetCurrentToken().type == TokenType::tk_is) {
+        while (GetCurrentToken().type != TokenType::tk_close_parenthesis) {
+            if (!ExpectToken(TokenType::tk_identifier)) {
+                break;
+            }
+            auto paramName =
+                std::make_shared<Identifier>(GetCurrentToken().value);
             AdvanceToken();
 
-            initialValue = ParseExpression();
-        }
-        if (GetCurrentToken().type == TokenType::tk_newline) {
+            if (!ExpectToken(TokenType::tk_colon)) {
+                break;
+            }
             AdvanceToken();
-        }
+            auto paramType = ParseType();
+            parameters.push_back(
+                std::make_shared<ParameterDeclaration>(paramName, paramType));
 
-        return std::make_shared<VariableDeclaration>(varName, varType,
-                                                     initialValue);
-    }
-
-    std::shared_ptr<TypeDeclaration> ParseTypeDeclaration() {
-        if (errorOccurred)
-            return nullptr;
-
-        AdvanceToken(); // Пропускаем 'type'
-
-        if (!ExpectToken(TokenType::tk_identifier)) {
-            return nullptr;
-        }
-        auto typeName = std::make_shared<Identifier>(GetCurrentToken().value);
-        AdvanceToken();
-
-        auto type = ParseType();
-        return std::make_shared<TypeDeclaration>(typeName, type);
-    }
-
-    bool validate_operator_token() {
-        if (GetCurrentToken().type == TokenType::tk_greater_than ||
-            GetCurrentToken().type == TokenType::tk_less_than ||
-            GetCurrentToken().type == TokenType::tk_less_than_equal ||
-            GetCurrentToken().type == TokenType::tk_greater_than_equal)
-            return true;
-        else
-            return false;
-    }
-
-    bool validate_operand() {
-        if (GetCurrentToken().type == TokenType::tk_num ||
-            GetCurrentToken().type == TokenType::tk_identifier ||
-            GetCurrentToken().type == TokenType::tk_real)
-            return true;
-        else
-            return false;
-    }
-
-    std::shared_ptr<IfStatement> ParseIfStatement() {
-        if (errorOccurred)
-            return nullptr;
-
-        std::cout << GetCurrentToken().value << std::endl;
-        AdvanceToken(); // Пропускаем 'if'
-
-        std::cout << GetCurrentToken().value << std::endl;
-
-        std::string s = "";
-        while (GetCurrentToken().type != TokenType::tk_then) {
-            /*if (GetCurrentToken().type == TokenType::tk_identifier) {*/
-            /*    auto varName =*/
-            /*        std::make_shared<Identifier>(GetCurrentToken().value);*/
-            /*    AdvanceToken();*/
-            /*}*/
-            /*auto firstOperand = ParseExpression();*/
-            /*if (validate_operator_token()) {*/
-            /*    auto operatorName =*/
-            /*        std::make_shared<Operator>(GetCurrentToken().value);*/
-            /*    AdvanceToken();*/
-            /*}*/
-            /*if (validate_operand()) {*/
-            /*    auto secondVarName =*/
-            /*        std::make_shared<Identifier>(GetCurrentToken().value);*/
-            /*    AdvanceToken();*/
-            /*}*/
-            /*auto secondOperand = ParseExpression();*/
-
-            s += GetCurrentToken().value + "-";
-
-            AdvanceToken();
-            if (validate_operator_token())
-                s += GetCurrentToken().value + "-";
-            else
-                return nullptr;
-
-            AdvanceToken();
-            s += GetCurrentToken().value;
-            AdvanceToken();
-            if (GetCurrentToken().type == TokenType::tk_or ||
-                GetCurrentToken().type == TokenType::tk_and) {
-                s += "-" + GetCurrentToken().value;
+            if (GetCurrentToken().type == TokenType::tk_comma) {
                 AdvanceToken();
+            } else {
+                break;
             }
         }
-
-        /*auto condition = ParseExpression();*/
-        std::shared_ptr<Body> thenBody = nullptr, elseBody = nullptr;
-
-        if (ExpectToken(TokenType::tk_then)) {
-            AdvanceToken();
-
-            std::cout << GetCurrentToken().value << std::endl;
-            thenBody = ParseBody();
-            /*AdvanceToken();*/
-        }
-
-        if (GetCurrentToken().type == TokenType::tk_else) {
-            AdvanceToken();
-
-            std::cout << "y" << GetCurrentToken().value << std::endl;
-            elseBody = ParseBody();
-        }
-
-        ExpectToken(TokenType::tk_end);
-        AdvanceToken();
-        auto condition = std::make_shared<LiteralExpression>(s);
-        std::cout << s;
-        return std::make_shared<IfStatement>(condition, thenBody, elseBody);
+        return parameters;
     }
 
-    std::shared_ptr<ForLoop> ParseForLoop() {
+    std::shared_ptr<Node> ParseParameterDeclaration() {
+        //implement
+    }
+
+    std::shared_ptr<Node> ParseType() {
         if (errorOccurred)
             return nullptr;
 
-        AdvanceToken(); // Пропуcкаем 'for'
-
-        if (!ExpectToken(TokenType::tk_identifier)) {
-            return nullptr;
-        }
-        auto loopVar = std::make_shared<Identifier>(GetCurrentToken().value);
+        std::string typeStr = GetCurrentToken().value;
+        PrimitiveType::Kind kind = StringToKind(typeStr);
+        auto typeNode = std::make_shared<PrimitiveType>(kind);
         AdvanceToken();
-        AdvanceToken();
-
-        bool reverse = false;
-        if (GetCurrentToken().type == TokenType::tk_reverse) {
-            reverse = true;
-            AdvanceToken();
-        }
-
-        auto range = ParseRange();
-        if (!range) {
-            return nullptr;
-        }
-
-        auto startExpr = range->GetStart();
-        auto endExpr = range->GetEnd();
-        auto body = ParseBody();
-
-        ExpectToken(TokenType::tk_end);
-        AdvanceToken();
-        AdvanceToken();
-        return std::make_shared<ForLoop>(loopVar, startExpr, endExpr, body,
-                                         reverse);
+        return typeNode;
     }
 
-    std::shared_ptr<WhileLoop> ParseWhileLoop() {
+    std::shared_ptr<Node> ParsePrimitiveType() {
+        //implement
+    }
+
+    std::shared_ptr<Node> ParseRecordType() {
+        //implement
+    }
+
+    std::shared_ptr<Node> ParseArrayType() {
+        //implement
+    }
+
+    std::shared_ptr<Node> ParseBody() {
+        if (errorOccurred)
+            return nullptr;
+
+        std::vector<std::shared_ptr<Statement>> statements;
+        std::vector<std::shared_ptr<SimpleDeclaration>> declarations;
+
+        bool flag = true;
+        while (GetCurrentToken().type != TokenType::tk_end &&
+               currentIndex < tokens.size() && flag == true) {
+            switch (GetCurrentToken().type) {
+            case TokenType::tk_var:
+                statements.push_back(ParseVariableDeclaration());
+                break;
+            case TokenType::tk_if:
+                statements.push_back(ParseIfStatement());
+                break;
+            case TokenType::tk_for:
+                statements.push_back(ParseForLoop());
+                break;
+            case TokenType::tk_else:
+                /*AdvanceToken();*/
+                flag = false;
+                break;
+            case TokenType::tk_while:
+                statements.push_back(ParseWhileLoop());
+                break;
+            case TokenType::tk_identifier:
+                statements.push_back(ParseRoutineCall());
+                break;
+            default:
+                AdvanceToken();
+                break;
+            }
+        }
+        return std::make_shared<Body>(declarations, statements);
+    }
+
+    std::shared_ptr<Node> ParseStatement() {
+        //implement
+    }
+
+
+    std::shared_ptr<Node> ParseAssignment() {
+        if (errorOccurred){ return nullptr; } 
+
+        auto variable = std::make_shared<Identifier>(GetCurrentToken().value);
+        AdvanceToken();
+        AdvanceToken(); 
+        auto expression = std::make_shared<LiteralExpression>(GetCurrentToken().value);
+        AdvanceToken(); 
+        return std::make_shared<Assignment>(variable, expression);
+    }
+
+
+    std::shared_ptr<Node> ParseRoutineCall() {
+        if (errorOccurred)
+            return nullptr;
+
+        auto routineName =
+            std::make_shared<Identifier>(GetCurrentToken().value);
+        AdvanceToken();
+
+        std::vector<std::shared_ptr<Expression>> arguments;
+        if (ExpectToken(TokenType::tk_open_parenthesis)) {
+            while (GetCurrentToken().type != TokenType::tk_close_parenthesis) {
+                arguments.push_back(ParseExpression());
+                if (GetCurrentToken().type == TokenType::tk_comma) {
+                    AdvanceToken();
+                }
+            }
+            ExpectToken(TokenType::tk_close_parenthesis);
+        }
+        return std::make_shared<RoutineCall>(routineName, arguments);
+    }
+    std::shared_ptr<Node> ParseWhileLoop() {
         if (errorOccurred)
             return nullptr;
 
@@ -485,61 +493,39 @@ class SyntaxAnalyzer {
         return std::make_shared<WhileLoop>(condition, body);
     }
 
-    std::vector<std::shared_ptr<ParameterDeclaration>> ParseParameters() {
+    std::shared_ptr<Node> ParseForLoop() {
         if (errorOccurred)
-            return {};
+            return nullptr;
 
-        std::vector<std::shared_ptr<ParameterDeclaration>> parameters;
+        AdvanceToken(); // Пропуcкаем 'for'
 
-        while (GetCurrentToken().type != TokenType::tk_close_parenthesis) {
-            if (!ExpectToken(TokenType::tk_identifier)) {
-                break;
-            }
-            auto paramName =
-                std::make_shared<Identifier>(GetCurrentToken().value);
-            AdvanceToken();
-
-            if (!ExpectToken(TokenType::tk_colon)) {
-                break;
-            }
-            AdvanceToken();
-            auto paramType = ParseType();
-            parameters.push_back(
-                std::make_shared<ParameterDeclaration>(paramName, paramType));
-
-            if (GetCurrentToken().type == TokenType::tk_comma) {
-                AdvanceToken();
-            } else {
-                break;
-            }
+        if (!ExpectToken(TokenType::tk_identifier)) {
+            return nullptr;
         }
-        return parameters;
-    }
-
-    std::shared_ptr<Type> ParseType() {
-        if (errorOccurred)
-            return nullptr;
-
-        std::string typeStr = GetCurrentToken().value;
-        PrimitiveType::Kind kind = StringToKind(typeStr);
-        auto typeNode = std::make_shared<PrimitiveType>(kind);
+        auto loopVar = std::make_shared<Identifier>(GetCurrentToken().value);
         AdvanceToken();
-        return typeNode;
-    }
-
-    std::shared_ptr<Expression> ParseExpression() {
-        if (errorOccurred)
-            return nullptr;
-
-        std::cout << GetCurrentToken().value << std::endl;
-
-        auto exprNode =
-            std::make_shared<LiteralExpression>(GetCurrentToken().value);
         AdvanceToken();
 
-        std::cout << GetCurrentToken().value << std::endl;
-        /*AdvanceToken();*/
-        return exprNode;
+        bool reverse = false;
+        if (GetCurrentToken().type == TokenType::tk_reverse) {
+            reverse = true;
+            AdvanceToken();
+        }
+
+        auto range = ParseRange();
+        if (!range) {
+            return nullptr;
+        }
+
+        auto startExpr = range->GetStart();
+        auto endExpr = range->GetEnd();
+        auto body = ParseBody();
+
+        ExpectToken(TokenType::tk_end);
+        AdvanceToken();
+        AdvanceToken();
+        return std::make_shared<ForLoop>(loopVar, startExpr, endExpr, body,
+                                         reverse);
     }
 
     std::shared_ptr<Range> ParseRange() {
@@ -557,62 +543,133 @@ class SyntaxAnalyzer {
         return nullptr;
     }
 
-    std::shared_ptr<Body> ParseBody() {
-        if (errorOccurred)
+std::shared_ptr<Node> ParseIfStatement() {
+    if (errorOccurred)
+        return nullptr;
+
+    std::cout << GetCurrentToken().value << std::endl;
+    AdvanceToken(); // Пропускаем 'if'
+
+    std::cout << GetCurrentToken().value << std::endl;
+
+    std::string s = "";
+    while (GetCurrentToken().type != TokenType::tk_then) {
+        /*if (GetCurrentToken().type == TokenType::tk_identifier) {*/
+        /*    auto varName =*/
+        /*        std::make_shared<Identifier>(GetCurrentToken().value);*/
+        /*    AdvanceToken();*/
+        /*}*/
+        /*auto firstOperand = ParseExpression();*/
+        /*if (validate_operator_token()) {*/
+        /*    auto operatorName =*/
+        /*        std::make_shared<Operator>(GetCurrentToken().value);*/
+        /*    AdvanceToken();*/
+        /*}*/
+        /*if (validate_operand()) {*/
+        /*    auto secondVarName =*/
+        /*        std::make_shared<Identifier>(GetCurrentToken().value);*/
+        /*    AdvanceToken();*/
+        /*}*/
+        /*auto secondOperand = ParseExpression();*/
+
+        s += GetCurrentToken().value + "-";
+
+        AdvanceToken();
+        if (validate_operator_token())
+            s += GetCurrentToken().value + "-";
+        else
             return nullptr;
 
-        std::vector<std::shared_ptr<Statement>> statements;
-        std::vector<std::shared_ptr<SimpleDeclaration>> declarations;
-
-        bool flag = true;
-        while (GetCurrentToken().type != TokenType::tk_end &&
-               currentIndex < tokens.size() && flag == true) {
-            switch (GetCurrentToken().type) {
-            case TokenType::tk_var:
-                statements.push_back(ParseVariableDeclaration());
-                break;
-            case TokenType::tk_if:
-                statements.push_back(ParseIfStatement());
-                break;
-            case TokenType::tk_for:
-                statements.push_back(ParseForLoop());
-                break;
-            case TokenType::tk_else:
-                /*AdvanceToken();*/
-                flag = false;
-                break;
-            case TokenType::tk_while:
-                statements.push_back(ParseWhileLoop());
-                break;
-            case TokenType::tk_identifier:
-                statements.push_back(ParseRoutineCall());
-                break;
-            default:
-                AdvanceToken();
-                break;
-            }
+        AdvanceToken();
+        s += GetCurrentToken().value;
+        AdvanceToken();
+        if (GetCurrentToken().type == TokenType::tk_or ||
+            GetCurrentToken().type == TokenType::tk_and) {
+            s += "-" + GetCurrentToken().value;
+            AdvanceToken();
         }
-        return std::make_shared<Body>(declarations, statements);
     }
 
-    std::shared_ptr<RoutineCall> ParseRoutineCall() {
-        if (errorOccurred)
-            return nullptr;
+    /*auto condition = ParseExpression();*/
+    std::shared_ptr<Body> thenBody = nullptr, elseBody = nullptr;
 
-        auto routineName =
-            std::make_shared<Identifier>(GetCurrentToken().value);
+    if (ExpectToken(TokenType::tk_then)) {
         AdvanceToken();
 
-        std::vector<std::shared_ptr<Expression>> arguments;
-        if (ExpectToken(TokenType::tk_open_parenthesis)) {
-            while (GetCurrentToken().type != TokenType::tk_close_parenthesis) {
-                arguments.push_back(ParseExpression());
-                if (GetCurrentToken().type == TokenType::tk_comma) {
-                    AdvanceToken();
-                }
-            }
-            ExpectToken(TokenType::tk_close_parenthesis);
-        }
-        return std::make_shared<RoutineCall>(routineName, arguments);
+        std::cout << GetCurrentToken().value << std::endl;
+        thenBody = ParseBody();
+        /*AdvanceToken();*/
+    }
+
+    if (GetCurrentToken().type == TokenType::tk_else) {
+        AdvanceToken();
+
+        std::cout << "y" << GetCurrentToken().value << std::endl;
+        elseBody = ParseBody();
+    }
+
+    ExpectToken(TokenType::tk_end);
+    AdvanceToken();
+    auto condition = std::make_shared<LiteralExpression>(s);
+    std::cout << s;
+    return std::make_shared<IfStatement>(condition, thenBody, elseBody);
+}
+
+std::shared_ptr<Expression> ParseExpression() {
+    if (errorOccurred)
+        return nullptr;
+
+    std::cout << GetCurrentToken().value << std::endl;
+
+    auto exprNode =
+        std::make_shared<LiteralExpression>(GetCurrentToken().value);
+    AdvanceToken();
+
+    std::cout << GetCurrentToken().value << std::endl;
+    /*AdvanceToken();*/
+    return exprNode;
+}
+
+std::shared_ptr<Node> ParseRelation() {
+    //implement
+}
+
+std::shared_ptr<Node> ParseSimple {
+    //implement
+}
+
+std::shared_ptr<Node> ParseFactor() {
+    //implement
+}
+
+std::shared_ptr<Node> ParseSummand() {
+    //implement
+}
+
+std::shared_ptr<Node> ParsePrimary(){
+    //implement
+}
+
+std::shared_ptr<Node> ParseModifiablePrimary() {
+    //implement
+}
+
+bool validate_operator_token() {
+        if (GetCurrentToken().type == TokenType::tk_greater_than ||
+            GetCurrentToken().type == TokenType::tk_less_than ||
+            GetCurrentToken().type == TokenType::tk_less_than_equal ||
+            GetCurrentToken().type == TokenType::tk_greater_than_equal)
+            return true;
+        else
+            return false;
+    }
+
+    bool validate_operand() {
+        if (GetCurrentToken().type == TokenType::tk_num ||
+            GetCurrentToken().type == TokenType::tk_identifier ||
+            GetCurrentToken().type == TokenType::tk_real)
+            return true;
+        else
+            return false;
     }
 };
