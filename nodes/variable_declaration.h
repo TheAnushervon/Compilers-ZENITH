@@ -6,6 +6,10 @@
 
 class VariableDeclaration : public Node {
   public:
+    std::shared_ptr<Node> identifier;
+    std::shared_ptr<Node> type;
+    std::shared_ptr<Node> expression;
+    
     VariableDeclaration(std::shared_ptr<Node> identifier,
                         std::shared_ptr<Node> type = nullptr,
                         std::shared_ptr<Node> expression = nullptr)
@@ -24,10 +28,7 @@ class VariableDeclaration : public Node {
         return result;
     }
 
-  private:
-    std::shared_ptr<Node> identifier;
-    std::shared_ptr<Node> type;
-    std::shared_ptr<Node> expression;
+
 };
 
 #endif // VARIABLEDECLARATION_H

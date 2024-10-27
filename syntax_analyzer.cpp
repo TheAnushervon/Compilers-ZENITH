@@ -27,6 +27,7 @@
 #include "nodes/user_type.h"
 #include "nodes/variable_declaration.h"
 #include "nodes/while_loop.h"
+#include "nodes/literal_primary.h"
 
 #include "tokens/enums/token_type.h"
 #include "tokens/structs/token.h"
@@ -40,34 +41,57 @@ class SyntaxAnalyzer {
     SyntaxAnalyzer(const std::vector<Token> &tokens)
         : tokens(tokens), currentIndex(0), errorOccurred(false) {}
 
-    std::unique_ptr<Program> Analyze() {
-        auto program = std::make_unique<Program>();
-        bool flag_terminated = false;
-        while (currentIndex < tokens.size() && !errorOccurred) {
-            if (flag_terminated)
-                break;
-            const Token &token = GetCurrentToken();
-            switch (token.type) {
-            case TokenType::tk_routine:
-                program->AddRoutineDeclaration(ParseRoutine());
-                break;
-            case TokenType::tk_identifier:
-            case TokenType::tk_var:
-            case TokenType::tk_type:
-                program->AddSimpleDeclaration(ParseSimpleDeclaration());
-                break;
-            case TokenType::tk_terminate:
-                flag_terminated = true;
-                break;
-            default:
-                std::cerr << "Syntax error: Unexpected token '" << token.value
-                          << "'\n";
-                errorOccurred = true;
-                break;
-            }
-        }
-        return program;
-    }
+//new_version
+std::unique_ptr<Program> Analyze() {
+       auto program = std::make_unique<Program>();
+       bool flag_terminated = false;
+
+       while (currentIndex < tokens.size() && !errorOccurred) {
+           if (flag_terminated)
+               break;
+
+           const Token& token = GetCurrentToken();
+
+           switch (token.type) {
+               case TokenType::tk_routine: {
+                   auto routine = ParseRoutineDeclaration();
+                   if (!routine) {
+                       errorOccurred = true;
+                       std::cerr << "Error: Failed to parse routine declaration.\n";
+                       return nullptr;
+                   }
+                   program->AddRoutineDeclaration(routine);
+                   break;
+               }
+
+               case TokenType::tk_identifier:
+               case TokenType::tk_var:
+               case TokenType::tk_type: {
+                   auto simpleDecl = ParseSimpleDeclaration();
+                   if (!simpleDecl) {
+                       errorOccurred = true;
+                       std::cerr << "Error: Failed to parse simple declaration.\n";
+                       return nullptr;
+                   }
+                   program->AddSimpleDeclaration(simpleDecl);
+                   break;
+               }
+
+               case TokenType::tk_terminate:
+                   flag_terminated = true;
+                   break;
+
+               default:
+                   std::cerr << "Syntax error: Unexpected token '" << token.value << "'\n";
+                   errorOccurred = true;
+                   return nullptr;
+           }
+
+           AdvanceToken(); 
+       }
+
+       return program;
+   }
 
     std::string toStrin(TokenType token) {
         switch (token) {
@@ -182,494 +206,875 @@ class SyntaxAnalyzer {
         return tokens[currentIndex];
     }
 
-    bool ExpectToken(TokenType expectedType) {
-        if (GetCurrentToken().type == expectedType) {
-            // AdvanceToken();
-            return true;
-        } else {
-            std::cerr << "Syntax error: Expected token type "
-                      << static_cast<int>(expectedType) << ", but got "
-                      << static_cast<int>(GetCurrentToken().type) << std::endl;
-            errorOccurred = true;
-            return false;
-        }
-    }
 
-    std::shared_ptr<Node> ParseSimpleDeclaration() {
-        if (errorOccurred)
-            return nullptr;
-        if (GetCurrentToken().type == TokenType::tk_identifier) {
-            return ParseAssignment();
-        }
-        if (GetCurrentToken().type == TokenType::tk_var) {
-            return ParseVariableDeclaration();
-        } else if (GetCurrentToken().type == TokenType::tk_type) {
-            return ParseTypeDeclaration();
-        }
-        if (GetCurrentToken().type == TokenType::tk_newline) {
-            AdvanceToken();
-        }
+
+//new_version
+std::shared_ptr<Node> ParseSimpleDeclaration() {
+    if (errorOccurred) {
         return nullptr;
     }
 
+    std::shared_ptr<Node> declarationNode;
+
+    TokenType currentToken = GetCurrentToken().type;
+
+    if (currentToken == TokenType::tk_var) {
+        declarationNode = ParseVariableDeclaration();
+    } 
+    else if (currentToken == TokenType::tk_type) {
+        declarationNode = ParseTypeDeclaration();
+    } else {
+        errorOccurred = true;
+        return nullptr;
+    }
+
+    return std::make_shared<SimpleDeclaration>(declarationNode);
+}
+
+
+//new_version
 std::shared_ptr<Node> ParseVariableDeclaration() {
+    if (errorOccurred) {
+        return nullptr;
+    }
+
+    if (GetCurrentToken().type != TokenType::tk_var) {
+        errorOccurred = true;
+        return nullptr;
+    }
+    AdvanceToken();
+
+    auto identifier = ParseIdentifier();
+    if (!identifier) {
+        errorOccurred = true;
+        return nullptr;
+    }
+
+    std::shared_ptr<Node> type = nullptr;
+    std::shared_ptr<Node> expression = nullptr;
+
+    if (GetCurrentToken().type == TokenType::tk_colon) {
+        AdvanceToken();
+
+
+        type = ParseType();
+        if (!type) {
+            errorOccurred = true;
+            return nullptr;
+        }
+    }
+
+    if (GetCurrentToken().type == TokenType::tk_is) {
+        AdvanceToken(); 
+
+        expression = ParseExpression();
+        if (!expression) {
+            errorOccurred = true;
+            return nullptr;
+        }
+    }
+
+    return std::make_shared<VariableDeclaration>(identifier, type, expression);
+}
+
+
+//new_version
+std::shared_ptr<Node> ParseTypeDeclaration() {
+    if (errorOccurred) {
+        return nullptr;
+    }
+
+    if (GetCurrentToken().type != TokenType::tk_type) {
+        errorOccurred = true;
+        return nullptr;
+    }
+    AdvanceToken(); 
+
+    auto identifier = ParseIdentifier();
+    if (!identifier) {
+        errorOccurred = true;
+        return nullptr;
+    }
+
+    if (GetCurrentToken().type != TokenType::tk_is) {
+        errorOccurred = true;
+        return nullptr;
+    }
+    AdvanceToken(); 
+
+    auto type = ParseType();
+    if (!type) {
+        errorOccurred = true;
+        return nullptr;
+    }
+
+    return std::make_shared<TypeDeclaration>(identifier, type);
+}
+
+
+//new_version
+std::shared_ptr<Node> ParseRoutineDeclaration() {
+    if (errorOccurred) {
+        return nullptr;
+    }
+
+    if (GetCurrentToken().type != TokenType::tk_routine) {
+        errorOccurred = true;
+        return nullptr;
+    }
+    AdvanceToken();
+
+    auto identifier = ParseIdentifier();
+    if (!identifier) {
+        errorOccurred = true;
+        return nullptr;
+    }
+
+    if (GetCurrentToken().type != TokenType::tk_open_parenthesis) {
+        errorOccurred = true;
+        return nullptr;
+    }
+    AdvanceToken(); 
+
+    auto parameters = ParseParameters();
+    if (!parameters) {
+        errorOccurred = true;
+        return nullptr;
+    }
+
+    if (GetCurrentToken().type != TokenType::tk_close_parenthesis) {
+        errorOccurred = true;
+        return nullptr;
+    }
+    AdvanceToken(); 
+
+    std::shared_ptr<Node> returnType = nullptr;
+    if (GetCurrentToken().type == TokenType::tk_colon) {
+        AdvanceToken(); // Пропускаем ":"
+        returnType = ParseType();
+        if (!returnType) {
+            errorOccurred = true;
+            return nullptr;
+        }
+    }
+
+    if (GetCurrentToken().type != TokenType::tk_is) {
+        errorOccurred = true;
+        return nullptr;
+    }
+    AdvanceToken();
+    auto body = ParseBody();
+    if (!body) {
+        errorOccurred = true;
+        return nullptr;
+    }
+
+
+    if (GetCurrentToken().type != TokenType::tk_end) {
+        errorOccurred = true;
+        return nullptr;
+    }
+    AdvanceToken(); 
+
+    return std::make_shared<RoutineDeclaration>(identifier, parameters, returnType, body);
+}
+
+
+
+//new_version
+std::shared_ptr<Node> ParseParameters() {
+    if (errorOccurred) {
+        return nullptr;
+    }
+
+    std::vector<std::shared_ptr<Node>> parameters;
+
+    auto param = ParseParameterDeclaration();
+    if (!param) {
+        errorOccurred = true;
+        return nullptr;
+    }
+    parameters.push_back(param);
+
+    while (GetCurrentToken().type == TokenType::tk_comma) {
+        AdvanceToken(); 
+
+        param = ParseParameterDeclaration();
+        if (!param) {
+            errorOccurred = true;
+            return nullptr;
+        }
+        parameters.push_back(param);
+    }
+
+    return std::make_shared<Parameters>(parameters);
+}
+
+
+//new_version
+std::shared_ptr<Node> ParseParameterDeclaration() {
+    if (errorOccurred) {
+        return nullptr;
+    }
+
+    auto identifier = ParseIdentifier();
+    if (!identifier) {
+        errorOccurred = true;
+        return nullptr;
+    }
+
+
+    if (GetCurrentToken().type != TokenType::tk_colon) {
+        errorOccurred = true;
+        return nullptr;
+    }
+    AdvanceToken(); 
+
+  
+    auto type = ParseType();
+    if (!type) {
+        errorOccurred = true;
+        return nullptr;
+    }
+
+    return std::make_shared<ParameterDeclaration>(identifier, type);
+}
+
+
+//new_version
+std::shared_ptr<Node> ParseType() {
+    if (errorOccurred) {
+        return nullptr;
+    }
+
+    std::shared_ptr<Node> typeNode;
+
+    TokenType currentToken = GetCurrentToken().type;
+
+    if (currentToken == TokenType::tk_integer || 
+        currentToken == TokenType::tk_real || 
+        currentToken == TokenType::tk_boolean) {
+        typeNode = ParsePrimitiveType();
+    } 
+    else if (currentToken == TokenType::tk_array) {
+        typeNode = ParseArrayType();
+    }
+   
+    else if (currentToken == TokenType::tk_record) {
+        typeNode = ParseRecordType();
+    } 
+    else if (currentToken == TokenType::tk_identifier) {
+        typeNode = ParseIdentifier();
+    } else {
+        errorOccurred = true;
+        return nullptr;
+    }
+
+    return std::make_shared<Type>(typeNode);
+}
+
+
+//new_version
+std::shared_ptr<Node> ParsePrimitiveType() {
+    if (errorOccurred) {
+        return nullptr;
+    }
+
+    TokenType currentToken = GetCurrentToken().type;
+    std::string typeName;
+
+    if (currentToken == TokenType::tk_integer) {
+        typeName = "integer";
+    } else if (currentToken == TokenType::tk_real) {
+        typeName = "real";
+    } else if (currentToken == TokenType::tk_boolean) {
+        typeName = "boolean";
+    } else {
+        errorOccurred = true;
+        return nullptr;
+    }
+
+    AdvanceToken(); 
+    return std::make_shared<PrimitiveType>(typeName);
+}
+
+
+
+//new_version
+std::shared_ptr<Node> ParseRecordType() {
+    if (errorOccurred) {
+        return nullptr;
+    }
+
+    if (GetCurrentToken().type != TokenType::tk_record) {
+        errorOccurred = true;
+        return nullptr;
+    }
+    AdvanceToken(); 
+
+    std::vector<std::shared_ptr<Node>> members;
+
+    while (GetCurrentToken().type != TokenType::tk_end) {
+        auto member = ParseVariableDeclaration();
+        if (!member) {
+            errorOccurred = true;
+            return nullptr;
+        }
+        members.push_back(member);
+    }
+
+    if (GetCurrentToken().type != TokenType::tk_end) {
+        errorOccurred = true;
+        return nullptr;
+    }
+    AdvanceToken(); 
+
+    return std::make_shared<RecordType>(members);
+}
+
+
+
+//new_version
+std::shared_ptr<Node> ParseArrayType() {
+    if (errorOccurred) {
+        return nullptr;
+    }
+
+    if (GetCurrentToken().type != TokenType::tk_array) {
+        errorOccurred = true;
+        return nullptr;
+    }
+    AdvanceToken(); 
+
+    std::shared_ptr<Node> sizeExpression = nullptr;
+    if (GetCurrentToken().type == TokenType::tk_open_bracket) {
+        AdvanceToken(); 
+
+        if (GetCurrentToken().type != TokenType::tk_close_bracket) {
+            sizeExpression = ParseExpression();
+            if (!sizeExpression) {
+                errorOccurred = true;
+                return nullptr;
+            }
+        }
+
+        if (GetCurrentToken().type != TokenType::tk_close_bracket) {
+            errorOccurred = true;
+            return nullptr;
+        }
+        AdvanceToken(); 
+    }
+    auto elementType = ParseType();
+    if (!elementType) {
+        errorOccurred = true;
+        return nullptr;
+    }
+
+    return std::make_shared<ArrayType>(elementType, sizeExpression);
+}
+
+
+
+//new_version
+std::shared_ptr<Node> ParseBody() {
+    if (errorOccurred) {
+        return nullptr;
+    }
+
+    std::vector<std::shared_ptr<Node>> bodyNodes;
+
+    while (true) {
+        std::shared_ptr<Node> childNode;
+        childNode = ParseSimpleDeclaration();
+        if (!childNode) {
+            childNode = ParseStatement();
+        }
+
+        if (!childNode) {
+            break;
+        }
+
+        bodyNodes.push_back(childNode);
+    }
+
+    if (bodyNodes.empty()) {
+        errorOccurred = true;
+        return nullptr;
+    }
+
+    return std::make_shared<Body>(bodyNodes);
+}
+
+
+//new_version
+std::shared_ptr<Node> ParseStatement() {
+    if (errorOccurred) {
+        return nullptr;
+    }
+
+    std::shared_ptr<Node> statementNode;
+
+    switch (GetCurrentToken().type) {
+        case TokenType::tk_identifier:
+            statementNode = ParseAssignment();
+            if (!statementNode) { 
+                statementNode = ParseRoutineCall();
+            }
+            break;
+
+        case TokenType::tk_while:
+            statementNode = ParseWhileLoop();
+            break;
+
+        case TokenType::tk_for:
+            statementNode = ParseForLoop();
+            break;
+
+        case TokenType::tk_if:
+            statementNode = ParseIfStatement();
+            break;
+
+        default:
+            errorOccurred = true;
+            return nullptr;
+    }
+
+    if (!statementNode) {
+        errorOccurred = true;
+        return nullptr;
+    }
+
+    return std::make_shared<Statement>(statementNode);
+}
+
+
+//new_version
+std::shared_ptr<Node> ParseAssignment() {
+    if (errorOccurred) {
+        return nullptr;
+    }
+
+    auto modifiablePrimary = ParseModifiablePrimary();
+    if (!modifiablePrimary) {
+        errorOccurred = true;
+        return nullptr;
+    }
+
+
+    if (GetCurrentToken().type != TokenType::tk_assign) { 
+        errorOccurred = true;
+        return nullptr;
+    }
+    AdvanceToken(); 
+    auto expression = ParseExpression();
+    if (!expression) {
+        errorOccurred = true;
+        return nullptr;
+    }
+
+    return std::make_shared<Assignment>(modifiablePrimary, expression);
+}
+
+
+//new_version
+std::shared_ptr<Node> ParseRoutineCall() {
     if (errorOccurred)
         return nullptr;
 
-    AdvanceToken(); // Пропускаем 'var'
-
-    if (!ExpectToken(TokenType::tk_identifier)) {
+    auto identifier = ParseIdentifier();
+    if (!identifier) {
+        errorOccurred = true;
         return nullptr;
     }
-    auto varName = std::make_shared<Identifier>(GetCurrentToken().value);
-    AdvanceToken();
 
-    std::shared_ptr<Type> varType = nullptr;
-    if (ExpectToken(TokenType::tk_colon)) {
-        AdvanceToken();
-        varType = ParseType();
-    }
+    std::vector<std::shared_ptr<Node>> expressions;
 
-    std::shared_ptr<Expression> initialValue = nullptr;
-    if (GetCurrentToken().type == TokenType::tk_is) {
-        AdvanceToken();
+    if (GetCurrentToken().type == TokenType::tk_open_parenthesis) {
+        AdvanceToken(); // Пропускаем '('
 
-        initialValue = ParseExpression();
-    }
-    if (GetCurrentToken().type == TokenType::tk_newline) {
-        AdvanceToken();
-    }
+        if (GetCurrentToken().type != TokenType::tk_close_parenthesis) {
+            while (true) {
+                auto expr = ParseExpression();
+                if (!expr) {
+                    errorOccurred = true;
+                    return nullptr;
+                }
+                expressions.push_back(expr);
 
-    return std::make_shared<VariableDeclaration>(varName, varType,
-                                                 initialValue);
-}
-
-    std::shared_ptr<Node> ParseTypeDeclaration() {
-        if (errorOccurred)
-            return nullptr;
-
-        AdvanceToken(); // Пропускаем 'type'
-
-        if (!ExpectToken(TokenType::tk_identifier)) {
-            return nullptr;
-        }
-        auto typeName = std::make_shared<Identifier>(GetCurrentToken().value);
-        AdvanceToken();
-
-        auto type = ParseType();
-        return std::make_shared<TypeDeclaration>(typeName, type);
-    }
-
-    std::shared_ptr<Node> ParseRoutineDeclaration() {
-        if (errorOccurred)
-            return nullptr;
-
-        AdvanceToken(); // Пропускаем 'routine'
-
-        if (!ExpectToken(TokenType::tk_identifier)) {
-            return nullptr;
-        }
-        //get Identifier
-        auto routineName =
-            std::make_shared<Node>(GetCurrentToken().value);
-        AdvanceToken();
-
-        std::vector<std::shared_ptr<Node>> parameters;
-        if (ExpectToken(TokenType::tk_open_parenthesis)) {
-            AdvanceToken();
-            parameters = ParseParameters();
-            ExpectToken(TokenType::tk_close_parenthesis);
-            AdvanceToken();
-        }
-
-        std::shared_ptr<Type> returnType = nullptr;
-        if (GetCurrentToken().type == TokenType::tk_colon) {
-            AdvanceToken();
-            returnType = ParseType();
-        }
-
-        std::shared_ptr<Body> body = nullptr;
-        if (ExpectToken(TokenType::tk_is)) {
-            AdvanceToken();
-            body = ParseBody();
-        }
-
-        ExpectToken(TokenType::tk_end);
-        AdvanceToken();
-        if (GetCurrentToken().type == TokenType::tk_newline) {
-            AdvanceToken();
-        }
-        return std::make_shared<RoutineDeclaration>(routineName, parameters,
-                                                    returnType, body);
-    }
-
-    std::vector<std::shared_ptr<Node>> ParseParameters() {
-        if (errorOccurred)
-            return {};
-
-        std::vector<std::shared_ptr<ParameterDeclaration>> parameters;
-
-        while (GetCurrentToken().type != TokenType::tk_close_parenthesis) {
-            if (!ExpectToken(TokenType::tk_identifier)) {
-                break;
-            }
-            auto paramName =
-                std::make_shared<Identifier>(GetCurrentToken().value);
-            AdvanceToken();
-
-            if (!ExpectToken(TokenType::tk_colon)) {
-                break;
-            }
-            AdvanceToken();
-            auto paramType = ParseType();
-            parameters.push_back(
-                std::make_shared<ParameterDeclaration>(paramName, paramType));
-
-            if (GetCurrentToken().type == TokenType::tk_comma) {
-                AdvanceToken();
-            } else {
-                break;
-            }
-        }
-        return parameters;
-    }
-
-    std::shared_ptr<Node> ParseParameterDeclaration() {
-        //implement
-    }
-
-    std::shared_ptr<Node> ParseType() {
-        if (errorOccurred)
-            return nullptr;
-
-        std::string typeStr = GetCurrentToken().value;
-        PrimitiveType::Kind kind = StringToKind(typeStr);
-        auto typeNode = std::make_shared<PrimitiveType>(kind);
-        AdvanceToken();
-        return typeNode;
-    }
-
-    std::shared_ptr<Node> ParsePrimitiveType() {
-        //implement
-    }
-
-    std::shared_ptr<Node> ParseRecordType() {
-        //implement
-    }
-
-    std::shared_ptr<Node> ParseArrayType() {
-        //implement
-    }
-
-    std::shared_ptr<Node> ParseBody() {
-        if (errorOccurred)
-            return nullptr;
-
-        std::vector<std::shared_ptr<Statement>> statements;
-        std::vector<std::shared_ptr<SimpleDeclaration>> declarations;
-
-        bool flag = true;
-        while (GetCurrentToken().type != TokenType::tk_end &&
-               currentIndex < tokens.size() && flag == true) {
-            switch (GetCurrentToken().type) {
-            case TokenType::tk_var:
-                statements.push_back(ParseVariableDeclaration());
-                break;
-            case TokenType::tk_if:
-                statements.push_back(ParseIfStatement());
-                break;
-            case TokenType::tk_for:
-                statements.push_back(ParseForLoop());
-                break;
-            case TokenType::tk_else:
-                /*AdvanceToken();*/
-                flag = false;
-                break;
-            case TokenType::tk_while:
-                statements.push_back(ParseWhileLoop());
-                break;
-            case TokenType::tk_identifier:
-                statements.push_back(ParseRoutineCall());
-                break;
-            default:
-                AdvanceToken();
-                break;
-            }
-        }
-        return std::make_shared<Body>(declarations, statements);
-    }
-
-    std::shared_ptr<Node> ParseStatement() {
-        //implement
-    }
-
-
-    std::shared_ptr<Node> ParseAssignment() {
-        if (errorOccurred){ return nullptr; } 
-
-        auto variable = std::make_shared<Identifier>(GetCurrentToken().value);
-        AdvanceToken();
-        AdvanceToken(); 
-        auto expression = std::make_shared<LiteralExpression>(GetCurrentToken().value);
-        AdvanceToken(); 
-        return std::make_shared<Assignment>(variable, expression);
-    }
-
-
-    std::shared_ptr<Node> ParseRoutineCall() {
-        if (errorOccurred)
-            return nullptr;
-
-        auto routineName =
-            std::make_shared<Identifier>(GetCurrentToken().value);
-        AdvanceToken();
-
-        std::vector<std::shared_ptr<Expression>> arguments;
-        if (ExpectToken(TokenType::tk_open_parenthesis)) {
-            while (GetCurrentToken().type != TokenType::tk_close_parenthesis) {
-                arguments.push_back(ParseExpression());
                 if (GetCurrentToken().type == TokenType::tk_comma) {
-                    AdvanceToken();
+                    AdvanceToken(); 
+                } else {
+                    break;
                 }
             }
-            ExpectToken(TokenType::tk_close_parenthesis);
         }
-        return std::make_shared<RoutineCall>(routineName, arguments);
-    }
-    std::shared_ptr<Node> ParseWhileLoop() {
-        if (errorOccurred)
+
+        if (GetCurrentToken().type != TokenType::tk_close_parenthesis) {
+            errorOccurred = true;
             return nullptr;
-
-        AdvanceToken(); // Пропускаем 'while'
-
-        std::string s = "";
-        while (GetCurrentToken().type != TokenType::tk_loop) {
-            /*if (GetCurrentToken().type == TokenType::tk_identifier) {*/
-            /*    auto varName =*/
-            /*        std::make_shared<Identifier>(GetCurrentToken().value);*/
-            /*    AdvanceToken();*/
-            /*}*/
-            /*auto firstOperand = ParseExpression();*/
-            /*if (validate_operator_token()) {*/
-            /*    auto operatorName =*/
-            /*        std::make_shared<Operator>(GetCurrentToken().value);*/
-            /*    AdvanceToken();*/
-            /*}*/
-            /*if (validate_operand()) {*/
-            /*    auto secondVarName =*/
-            /*        std::make_shared<Identifier>(GetCurrentToken().value);*/
-            /*    AdvanceToken();*/
-            /*}*/
-            /*auto secondOperand = ParseExpression();*/
-
-            s += GetCurrentToken().value + "-";
-
-            AdvanceToken();
-            if (validate_operator_token())
-                s += GetCurrentToken().value + "-";
-            else
-                return nullptr;
-
-            AdvanceToken();
-            s += GetCurrentToken().value;
-            AdvanceToken();
-            if (GetCurrentToken().type == TokenType::tk_or ||
-                GetCurrentToken().type == TokenType::tk_and) {
-                s += "-" + GetCurrentToken().value;
-                AdvanceToken();
-            }
         }
-        AdvanceToken();
-
-        std::cout << toStrin(GetCurrentToken().type) << std::endl;
-
-        /*auto condition = ParseExpression();*/
-        std::cout << toStrin(GetCurrentToken().type) << std::endl;
-        auto body = ParseBody();
-
-        ExpectToken(TokenType::tk_end);
-        AdvanceToken();
-        auto condition = std::make_shared<LiteralExpression>(s);
-        return std::make_shared<WhileLoop>(condition, body);
+        AdvanceToken(); 
     }
 
-    std::shared_ptr<Node> ParseForLoop() {
-        if (errorOccurred)
-            return nullptr;
+    return std::make_shared<RoutineCall>(identifier, expressions);
+}
 
-        AdvanceToken(); // Пропуcкаем 'for'
 
-        if (!ExpectToken(TokenType::tk_identifier)) {
-            return nullptr;
-        }
-        auto loopVar = std::make_shared<Identifier>(GetCurrentToken().value);
-        AdvanceToken();
-        AdvanceToken();
 
-        bool reverse = false;
-        if (GetCurrentToken().type == TokenType::tk_reverse) {
-            reverse = true;
-            AdvanceToken();
-        }
+//new_version
+std::shared_ptr<Node> ParseWhileLoop() {
+    if (errorOccurred)
+        return nullptr;
 
-        auto range = ParseRange();
-        if (!range) {
-            return nullptr;
-        }
 
-        auto startExpr = range->GetStart();
-        auto endExpr = range->GetEnd();
-        auto body = ParseBody();
-
-        ExpectToken(TokenType::tk_end);
-        AdvanceToken();
-        AdvanceToken();
-        return std::make_shared<ForLoop>(loopVar, startExpr, endExpr, body,
-                                         reverse);
+    if (GetCurrentToken().type != TokenType::tk_while) {
+        errorOccurred = true;
+        return nullptr;
     }
+    AdvanceToken();
 
-    std::shared_ptr<Range> ParseRange() {
-        if (errorOccurred)
-            return nullptr;
-
-        auto startExpr = ParseExpression();
-
-        if (GetCurrentToken().type == TokenType::tk_range) {
-            AdvanceToken();
-            auto endExpr = ParseExpression();
-            return std::make_shared<Range>(startExpr, endExpr);
-        }
-
+    auto expression = ParseExpression();
+    if (!expression) {
+        errorOccurred = true;
         return nullptr;
     }
 
+    if (GetCurrentToken().type != TokenType::tk_loop) {
+        errorOccurred = true;
+        return nullptr;
+    }
+    AdvanceToken(); 
+
+    auto body = ParseBody();
+    if (!body) {
+        errorOccurred = true;
+        return nullptr;
+    }
+
+    if (GetCurrentToken().type != TokenType::tk_end) {
+        errorOccurred = true;
+        return nullptr;
+    }
+    AdvanceToken(); 
+
+    return std::make_shared<WhileLoop>(expression, body);
+}
+
+
+//new_version
+std::shared_ptr<Node> ParseForLoop() {
+    if (errorOccurred)
+        return nullptr;
+
+    if (GetCurrentToken().type != TokenType::tk_for) {
+        errorOccurred = true;
+        return nullptr;
+    }
+    AdvanceToken(); 
+
+    auto identifier = ParseIdentifier();
+    if (!identifier) {
+        errorOccurred = true;
+        return nullptr;
+    }
+
+
+    if (GetCurrentToken().type != TokenType::tk_in) {
+        errorOccurred = true;
+        return nullptr;
+    }
+    AdvanceToken(); 
+
+    bool isReverse = false;
+    if (GetCurrentToken().type == TokenType::tk_reverse) {
+        isReverse = true;
+        AdvanceToken(); 
+    }
+
+   
+    auto range = ParseRange();
+    if (!range) {
+        errorOccurred = true;
+        return nullptr;
+    }
+
+
+    if (GetCurrentToken().type != TokenType::tk_loop) {
+        errorOccurred = true;
+        return nullptr;
+    }
+    AdvanceToken(); 
+
+    auto body = ParseBody();
+    if (!body) {
+        errorOccurred = true;
+        return nullptr;
+    }
+
+    if (GetCurrentToken().type != TokenType::tk_end) {
+        errorOccurred = true;
+        return nullptr;
+    }
+    AdvanceToken(); 
+
+    auto forLoopNode = std::make_shared<ForLoop>(identifier, range, body);
+    if (isReverse) {
+        forLoopNode->setReverse(true); 
+    }
+    return forLoopNode;
+}
+
+//new_version
+std::shared_ptr<Node> ParseRange() {
+    auto startExpr = ParseExpression();
+    if (!startExpr) {
+        errorOccurred = true;
+        return nullptr;
+    }
+
+    if (GetCurrentToken().type != TokenType::tk_range) { 
+        errorOccurred = true;
+        return nullptr;
+    }
+    AdvanceToken(); 
+
+    auto endExpr = ParseExpression();
+    if (!endExpr) {
+        errorOccurred = true;
+        return nullptr;
+    }
+    
+    return std::make_shared<Range>(startExpr, endExpr);
+}
+
+
+
+//new_version
 std::shared_ptr<Node> ParseIfStatement() {
     if (errorOccurred)
         return nullptr;
+    
+    if (GetCurrentToken().type != TokenType::tk_if) {
+        errorOccurred = true;
+        return nullptr;
+    }
+    AdvanceToken(); 
 
-    std::cout << GetCurrentToken().value << std::endl;
-    AdvanceToken(); // Пропускаем 'if'
+    auto ifExpression = ParseExpression();
+    if (!ifExpression) {
+        errorOccurred = true;
+        return nullptr;
+    }
 
-    std::cout << GetCurrentToken().value << std::endl;
+    if (GetCurrentToken().type != TokenType::tk_then) {
+        errorOccurred = true;
+        return nullptr;
+    }
+    AdvanceToken(); 
 
-    std::string s = "";
-    while (GetCurrentToken().type != TokenType::tk_then) {
-        /*if (GetCurrentToken().type == TokenType::tk_identifier) {*/
-        /*    auto varName =*/
-        /*        std::make_shared<Identifier>(GetCurrentToken().value);*/
-        /*    AdvanceToken();*/
-        /*}*/
-        /*auto firstOperand = ParseExpression();*/
-        /*if (validate_operator_token()) {*/
-        /*    auto operatorName =*/
-        /*        std::make_shared<Operator>(GetCurrentToken().value);*/
-        /*    AdvanceToken();*/
-        /*}*/
-        /*if (validate_operand()) {*/
-        /*    auto secondVarName =*/
-        /*        std::make_shared<Identifier>(GetCurrentToken().value);*/
-        /*    AdvanceToken();*/
-        /*}*/
-        /*auto secondOperand = ParseExpression();*/
+    auto thenBody = ParseBody();
+    if (!thenBody) {
+        errorOccurred = true;
+        return nullptr;
+    }
 
-        s += GetCurrentToken().value + "-";
-
-        AdvanceToken();
-        if (validate_operator_token())
-            s += GetCurrentToken().value + "-";
-        else
+    std::shared_ptr<Node> elseBody = nullptr;
+    if (GetCurrentToken().type == TokenType::tk_else) {
+        AdvanceToken(); 
+        elseBody = ParseBody();
+        if (!elseBody) {
+            errorOccurred = true;
             return nullptr;
-
-        AdvanceToken();
-        s += GetCurrentToken().value;
-        AdvanceToken();
-        if (GetCurrentToken().type == TokenType::tk_or ||
-            GetCurrentToken().type == TokenType::tk_and) {
-            s += "-" + GetCurrentToken().value;
-            AdvanceToken();
         }
     }
 
-    /*auto condition = ParseExpression();*/
-    std::shared_ptr<Body> thenBody = nullptr, elseBody = nullptr;
-
-    if (ExpectToken(TokenType::tk_then)) {
-        AdvanceToken();
-
-        std::cout << GetCurrentToken().value << std::endl;
-        thenBody = ParseBody();
-        /*AdvanceToken();*/
+    if (GetCurrentToken().type != TokenType::tk_end) {
+        errorOccurred = true;
+        return nullptr;
     }
-
-    if (GetCurrentToken().type == TokenType::tk_else) {
-        AdvanceToken();
-
-        std::cout << "y" << GetCurrentToken().value << std::endl;
-        elseBody = ParseBody();
-    }
-
-    ExpectToken(TokenType::tk_end);
-    AdvanceToken();
-    auto condition = std::make_shared<LiteralExpression>(s);
-    std::cout << s;
-    return std::make_shared<IfStatement>(condition, thenBody, elseBody);
+    AdvanceToken(); 
+    return std::make_shared<IfStatement>(ifExpression, thenBody, elseBody);
 }
 
-std::shared_ptr<Expression> ParseExpression() {
+
+//new_version
+std::shared_ptr<Node> ParseExpression() {
     if (errorOccurred)
         return nullptr;
 
-    std::cout << GetCurrentToken().value << std::endl;
+    std::vector<std::shared_ptr<Node>> relations;
+    relations.push_back(ParseRelation()); // Разбираем первый Relation
 
-    auto exprNode =
-        std::make_shared<LiteralExpression>(GetCurrentToken().value);
-    AdvanceToken();
+    while (true) {
+        TokenType currentToken = GetCurrentToken().type;
 
-    std::cout << GetCurrentToken().value << std::endl;
-    /*AdvanceToken();*/
-    return exprNode;
+        if (currentToken == TokenType::tk_and || 
+            currentToken == TokenType::tk_or || 
+            currentToken == TokenType::tk_xor) {
+
+            // Сохраняем оператор логической операции
+            AdvanceToken(); // Пропускаем оператор
+
+            // Разбираем следующий Relation и добавляем его в вектор
+            relations.push_back(ParseRelation());
+        } else {
+            break; // Если оператор не найден, выходим из цикла
+        }
+    }
+
+    // Создаем узел Expression с собранными Relation
+    return std::make_shared<Expression>(relations);
 }
 
+
+
+//new_version
 std::shared_ptr<Node> ParseRelation() {
-    //implement
+    std::vector<std::shared_ptr<Node>> simples;
+    simples.push_back(ParseSimple()); 
+
+    TokenType currentToken = GetCurrentToken().type;
+
+    if (currentToken == TokenType::tk_less_than ||
+        currentToken == TokenType::tk_less_than_equal ||
+        currentToken == TokenType::tk_greater_than ||
+        currentToken == TokenType::tk_greater_than_equal ||
+        currentToken == TokenType::tk_equal ||
+        currentToken == TokenType::tk_not_equal) {
+
+        auto operatorToken = GetCurrentToken();
+        AdvanceToken();
+
+        simples.push_back(ParseSimple());
+    }
+
+    return std::make_shared<Relation>(simples);
 }
 
-std::shared_ptr<Node> ParseSimple {
-    //implement
+
+//new version
+std::shared_ptr<Node> ParseSimple() {
+    std::vector<std::shared_ptr<Node>> factors;
+    factors.push_back(ParseFactor()); 
+
+    while (true) {
+        TokenType currentToken = GetCurrentToken().type;
+
+        if (currentToken == TokenType::tk_multiply || currentToken == TokenType::tk_divide || currentToken == TokenType::tk_mod) {
+            auto operatorToken = GetCurrentToken();
+            AdvanceToken();
+
+            factors.push_back(ParseFactor());
+        } else {
+            break; 
+        }
+    }
+    return std::make_shared<Simple>(factors);
 }
 
+
+//new_version
 std::shared_ptr<Node> ParseFactor() {
-    //implement
+    std::vector<std::shared_ptr<Node>> summands;
+    summands.push_back(ParseSummand());
+
+    while (true) {
+        TokenType currentToken = GetCurrentToken().type;
+
+        if (currentToken == TokenType::tk_add || currentToken == TokenType::tk_subtract) {
+            auto operatorToken = GetCurrentToken();
+            AdvanceToken();
+
+            summands.push_back(ParseSummand());
+        } else {
+            break; 
+        }
+    }
+    return std::make_shared<Factor>(summands);
 }
 
+
+//new_version
 std::shared_ptr<Node> ParseSummand() {
-    //implement
+    std::shared_ptr<Node> summandNode;
+
+    TokenType currentToken = GetCurrentToken().type;
+
+    if (currentToken == TokenType::tk_open_parenthesis) {
+        AdvanceToken();
+        summandNode = ParseExpression(); 
+        if (GetCurrentToken().type != TokenType::tk_close_parenthesis) {
+            errorOccurred = true;
+            return nullptr;
+        }
+        AdvanceToken(); 
+    } else {
+
+        summandNode = ParsePrimary();
+    }
+
+    return std::make_shared<Summand>(summandNode);
 }
 
-std::shared_ptr<Node> ParsePrimary(){
-    //implement
+
+//new_version
+std::shared_ptr<Node> ParsePrimary() {
+    std::shared_ptr<Node> primaryNode;
+
+    TokenType currentToken = GetCurrentToken().type;
+
+    if (currentToken == TokenType::tk_num) {
+        int numericValue = std::stoi(GetCurrentToken().value); 
+        primaryNode = std::make_shared<LiteralPrimary>(numericValue);
+        AdvanceToken();
+    } else if (currentToken == TokenType::tk_true || currentToken == TokenType::tk_false) {
+        bool boolValue = (currentToken == TokenType::tk_true);
+        primaryNode = std::make_shared<LiteralPrimary>(boolValue);
+        AdvanceToken();
+    } else if (currentToken == TokenType::tk_identifier) {
+        primaryNode = ParseModifiablePrimary();
+    } else if (currentToken == TokenType::tk_open_parenthesis) {
+        AdvanceToken();
+        primaryNode = ParseExpression();
+        if (GetCurrentToken().type != TokenType::tk_close_parenthesis) {
+            errorOccurred = true;
+            return nullptr;
+        }
+        AdvanceToken();
+    } else {
+        errorOccurred = true;
+        return nullptr;
+    }
+
+    return std::make_shared<Primary>(primaryNode);
 }
 
+
+
+//new_version
 std::shared_ptr<Node> ParseModifiablePrimary() {
-    //implement
+    auto modifiablePrimary = std::make_shared<ModifiablePrimary>();
+    modifiablePrimary->identifier = ParseIdentifier();
+    modifiablePrimary->specialIdentifier = ParseIdentifier();
+    modifiablePrimary->expression = ParseExpression();
+    return modifiablePrimary;
 }
 
-bool validate_operator_token() {
-        if (GetCurrentToken().type == TokenType::tk_greater_than ||
-            GetCurrentToken().type == TokenType::tk_less_than ||
-            GetCurrentToken().type == TokenType::tk_less_than_equal ||
-            GetCurrentToken().type == TokenType::tk_greater_than_equal)
-            return true;
-        else
-            return false;
-    }
 
-    bool validate_operand() {
-        if (GetCurrentToken().type == TokenType::tk_num ||
-            GetCurrentToken().type == TokenType::tk_identifier ||
-            GetCurrentToken().type == TokenType::tk_real)
-            return true;
-        else
-            return false;
+//new_version
+std::shared_ptr<Node> ParseIdentifier() {
+    //for case Identifier { . Identifier...}
+    if (GetCurrentToken().type == TokenType::tk_dot) {
+        AdvanceToken();
     }
+    if (GetCurrentToken().type != TokenType::tk_identifier ) {
+        errorOccurred = true;
+        return nullptr;
+    }
+    auto identifier = std::make_shared<Identifier>(GetCurrentToken().value);
+    AdvanceToken();
+    return identifier;
+}
+
+
 };

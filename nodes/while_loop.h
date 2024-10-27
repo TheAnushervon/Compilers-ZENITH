@@ -6,6 +6,10 @@
 
 class WhileLoop : public Node {
   public:
+ //while Expression loop Body end
+  std::shared_ptr<Node> expression;
+  std::shared_ptr<Node> body;
+
   WhileLoop(std::shared_ptr<Node> expr, std::shared_ptr<Node> bodyNode)
   : expression(expr), body(bodyNode) {}
 
@@ -13,11 +17,6 @@ class WhileLoop : public Node {
         std::string result = "WhileLoop: " +expression->ToString(counter) + " " + body->ToString(counter);
         return result;
     }
-
-  private:
-    //while Expression loop Body end
-    std::shared_ptr<Node> expression;
-    std::shared_ptr<Node> body;
 };
 
 #endif // WHILELOOP_H

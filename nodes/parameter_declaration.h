@@ -3,11 +3,13 @@
 
 #include "identifier.h"
 #include "node.h"
-#include "type.h"
 #include <memory>
 
 class ParameterDeclaration : public Node {
   public:
+    std::shared_ptr<Node> identifier;
+    std::shared_ptr<Node> type;
+
     ParameterDeclaration(std::shared_ptr<Node> identifier,
                          std::shared_ptr<Node> type)
         : identifier(identifier), type(type) {}
@@ -24,9 +26,6 @@ class ParameterDeclaration : public Node {
         return result += "Type: " + type->ToString(counter) + "\n";
     }
 
-  private:
-    std::shared_ptr<Node> identifier;
-    std::shared_ptr<Node> type;
 };
 
 #endif // PARAMETERDECLARATION_H

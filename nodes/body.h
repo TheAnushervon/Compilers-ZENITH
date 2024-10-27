@@ -6,17 +6,20 @@
 #include <vector>
 
 class Body : public Node {
-  public:
-    Body(std::shared_ptr<Node> childNode) : child(childNode) {}
-    std::string ToString(int counter) const override {
-        std::string result = "Body: " + child->ToString(counter);
+public:
+    std::vector<std::shared_ptr<Node>> statements;
 
+    Body(const std::vector<std::shared_ptr<Node>>& statements)
+        : statements(statements) {}
+
+    std::string ToString(int counter) const override {
+        std::string result = "Body: ";
+        for (const auto& stmt : statements) {
+            result += stmt->ToString(counter) + "\n";
+        }
         return result;
     }
-
-  private:
-// { SimpleDeclaration | Statement } 
-   std::shared_ptr<Node> child;
 };
+
 
 #endif // BODY_H

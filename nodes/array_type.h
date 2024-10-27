@@ -6,6 +6,10 @@
 
 class ArrayType : public Node {
 public:
+
+    std::shared_ptr<Node> type;  
+    std::shared_ptr<Node> expression;
+
     ArrayType(std::shared_ptr<Node> elementType, std::shared_ptr<Node> expression = nullptr)
         : type(elementType), expression(expression) {}
 
@@ -19,10 +23,7 @@ public:
         result += type->ToString(count);
         return result;
     }
-
-private:
-    std::shared_ptr<Node> type;  
-    std::shared_ptr<Node> expression;   
+   
 };
 
 #endif // ARRAYTYPE_H

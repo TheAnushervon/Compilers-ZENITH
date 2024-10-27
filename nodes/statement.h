@@ -7,19 +7,18 @@
 
 class Statement : public Node {
 public:
+    // Assignment | RoutineCall 
+    //| WhileLoop | ForLoop | /* ForeachLoop */ 
+    //| IfStatement
+     std::shared_ptr<Node> child;
 
-Statement(std::shared_ptr<Node> childNode) : child(childNode) {}
+    Statement(std::shared_ptr<Node> childNode) : child(childNode) {}
 
     std::string ToString(int count) const override {
         std::string result = "Statement: " + child->ToString(2);
         return result;
     }
 
- private:
-// Assignment | RoutineCall 
-//| WhileLoop | ForLoop | /* ForeachLoop */ 
-//| IfStatement
- std::shared_ptr<Node> child;
 };
 
 #endif // STATEMENT_H

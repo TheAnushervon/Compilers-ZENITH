@@ -7,7 +7,10 @@
 
 class Summand : public Node {
 public:
-Summand(std::shared_ptr<Node> childNode) : child(childNode) {}
+    // Primary | ( Expression ) 
+    std::shared_ptr<Node> child; 
+    
+    Summand(std::shared_ptr<Node> childNode) : child(childNode) {}
 
 
     std::string ToString(int counter) const override {
@@ -15,9 +18,7 @@ Summand(std::shared_ptr<Node> childNode) : child(childNode) {}
         return result;
     }
 
-private:
-// Primary | ( Expression ) 
-    std::shared_ptr<Node> child; 
+
 };
 
 #endif // Summand_H

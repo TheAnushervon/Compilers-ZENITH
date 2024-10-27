@@ -7,7 +7,10 @@
 
 class Simple : public Node {
 public:
-Simple(const std::vector<std::shared_ptr<Node>>& factorsList) : factors(factorsList) {}
+    // Factor { ( * | / | % ) Factor } 
+    std::vector<std::shared_ptr<Node>> factors; 
+    
+    Simple(const std::vector<std::shared_ptr<Node>>& factorsList) : factors(factorsList) {}
 
     std::string ToString(int counter) const override {
         std::string result;
@@ -19,10 +22,6 @@ Simple(const std::vector<std::shared_ptr<Node>>& factorsList) : factors(factorsL
         }
         return result;
     }
-
-private:
-// Factor { ( * | / | % ) Factor } 
-    std::vector<std::shared_ptr<Node>> factors; 
 };
 
 #endif // Simple_H

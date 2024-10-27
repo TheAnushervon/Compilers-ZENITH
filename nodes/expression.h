@@ -8,9 +8,12 @@
 
 class Expression : public Node{
 public:
- Expression(const std::vector<std::shared_ptr<Node>>& relationsList) : relations(relationsList) {}
 
-std::string ToString(int count) const override {
+    //Relation { ( and | or | xor ) Relation }
+    std::vector<std::shared_ptr<Node>>relations;
+    Expression(const std::vector<std::shared_ptr<Node>>& relationsList) : relations(relationsList) {}
+
+    std::string ToString(int count) const override {
     std::string result = "Expression: ";
     for (const auto& relation : relations) {
         result += relation->ToString(count) + " ";
@@ -18,9 +21,6 @@ std::string ToString(int count) const override {
     return result;
 }
 
-private:
-//Relation { ( and | or | xor ) Relation }
- std::vector<std::shared_ptr<Node>>relations;
 };
 
 #endif // EXPRESSION_H

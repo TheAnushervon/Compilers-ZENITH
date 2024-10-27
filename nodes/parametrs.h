@@ -8,6 +8,10 @@
 
 class Parameters : public Node {
 public:
+
+    // ParameterDeclaration { ',' ParameterDeclaration } 
+    std::vector<std::shared_ptr<Node>> children;
+
     explicit Parameters(const std::vector<std::shared_ptr<Node>>& initialChildren = {})
         : children(initialChildren) {}
     
@@ -32,9 +36,6 @@ public:
         return result;
     }
 
-private:
-// ParameterDeclaration { ',' ParameterDeclaration } 
-    std::vector<std::shared_ptr<Node>> children;
 };
 
 #endif // PARAMETERS_H
