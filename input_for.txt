@@ -1,2 +1,6 @@
-var a : integer is 10
-a:=5
+routine AddOne (x : integer, y: boolean, z: real) : integer is
+    type Point is record
+    var x is 0
+    var y is 0
+end
+end
