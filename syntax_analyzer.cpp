@@ -39,14 +39,14 @@
 class SyntaxAnalyzer {
   public:
     SyntaxAnalyzer(const std::vector<Token> &tokens)
-        : tokens(tokens), currentIndex(0), errorOccurred(false) {}
+        : tokens(tokens), currentIndex(0) {}
 
     // new_version
     std::unique_ptr<Program> Analyze() {
         auto program = std::make_unique<Program>();
         bool flag_terminated = false;
 
-        while (currentIndex < tokens.size() && !errorOccurred) {
+        while (currentIndex < tokens.size()) {
             if (flag_terminated)
                 break;
 
@@ -56,9 +56,8 @@ class SyntaxAnalyzer {
             case TokenType::tk_routine: {
                 auto routine = ParseRoutineDeclaration();
                 if (!routine) {
-                    errorOccurred = true;
                     std::cerr
-                        << "Error: Failed to parse routine declaration.\n";
+                        << "Error: Failed to parse routine declaration.\n" << toStrin(GetCurrentToken().type);
                     return nullptr;
                 }
                 program->AddRoutineDeclaration(routine);
@@ -70,7 +69,6 @@ class SyntaxAnalyzer {
             case TokenType::tk_type: {
                 auto simpleDecl = ParseSimpleDeclaration();
                 if (!simpleDecl) {
-                    errorOccurred = true;
                     std::cerr << "Error: Failed to parse simple declaration.\n";
                     return nullptr;
                 }
@@ -85,7 +83,6 @@ class SyntaxAnalyzer {
             default:
                 std::cerr << "Syntax error: Unexpected token '" << token.value
                           << "'\n";
-                errorOccurred = true;
                 return nullptr;
             }
 
@@ -197,7 +194,6 @@ class SyntaxAnalyzer {
   private:
     const std::vector<Token> &tokens;
     size_t currentIndex;
-    bool errorOccurred;
 
     const Token &GetCurrentToken() const { return tokens[currentIndex]; }
 
@@ -210,20 +206,16 @@ class SyntaxAnalyzer {
 
     // new_version
     std::shared_ptr<Node> ParseSimpleDeclaration() {
-        if (errorOccurred) {
-            return nullptr;
-        }
-
+       
         std::shared_ptr<Node> declarationNode;
 
-        TokenType currentToken = GetCurrentToken().type;
-
+        auto& currentToken = GetCurrentToken().type;
+       
         if (currentToken == TokenType::tk_var) {
             declarationNode = ParseVariableDeclaration();
         } else if (currentToken == TokenType::tk_type) {
             declarationNode = ParseTypeDeclaration();
         } else {
-            errorOccurred = true;
             return nullptr;
         }
 
@@ -232,19 +224,16 @@ class SyntaxAnalyzer {
 
     // new_version
     std::shared_ptr<Node> ParseVariableDeclaration() {
-        if (errorOccurred) {
-            return nullptr;
-        }
+      
 
         if (GetCurrentToken().type != TokenType::tk_var) {
-            errorOccurred = true;
+            
             return nullptr;
         }
         AdvanceToken();
 
         auto identifier = ParseIdentifier();
         if (!identifier) {
-            errorOccurred = true;
             return nullptr;
         }
 
@@ -256,7 +245,6 @@ class SyntaxAnalyzer {
 
             type = ParseType();
             if (!type) {
-                errorOccurred = true;
                 return nullptr;
             }
         }
@@ -266,7 +254,6 @@ class SyntaxAnalyzer {
 
             expression = ParseExpression();
             if (!expression) {
-                errorOccurred = true;
                 return nullptr;
             }
         }
@@ -277,31 +264,24 @@ class SyntaxAnalyzer {
 
     // new_version
     std::shared_ptr<Node> ParseTypeDeclaration() {
-        if (errorOccurred) {
-            return nullptr;
-        }
 
         if (GetCurrentToken().type != TokenType::tk_type) {
-            errorOccurred = true;
             return nullptr;
         }
         AdvanceToken();
 
         auto identifier = ParseIdentifier();
         if (!identifier) {
-            errorOccurred = true;
             return nullptr;
         }
 
         if (GetCurrentToken().type != TokenType::tk_is) {
-            errorOccurred = true;
             return nullptr;
         }
         AdvanceToken();
 
         auto type = ParseType();
         if (!type) {
-            errorOccurred = true;
             return nullptr;
         }
 
@@ -310,36 +290,29 @@ class SyntaxAnalyzer {
 
     // new_version
     std::shared_ptr<Node> ParseRoutineDeclaration() {
-        if (errorOccurred) {
-            return nullptr;
-        }
+    
 
         if (GetCurrentToken().type != TokenType::tk_routine) {
-            errorOccurred = true;
             return nullptr;
         }
         AdvanceToken();
 
         auto identifier = ParseIdentifier();
         if (!identifier) {
-            errorOccurred = true;
             return nullptr;
         }
 
         if (GetCurrentToken().type != TokenType::tk_open_parenthesis) {
-            errorOccurred = true;
             return nullptr;
         }
         AdvanceToken();
 
         auto parameters = ParseParameters();
         if (!parameters) {
-            errorOccurred = true;
             return nullptr;
         }
 
         if (GetCurrentToken().type != TokenType::tk_close_parenthesis) {
-            errorOccurred = true;
             return nullptr;
         }
         AdvanceToken();
@@ -349,24 +322,25 @@ class SyntaxAnalyzer {
             AdvanceToken(); // Пропускаем ":"
             returnType = ParseType();
             if (!returnType) {
-                errorOccurred = true;
+                 
                 return nullptr;
             }
         }
 
         if (GetCurrentToken().type != TokenType::tk_is) {
-            errorOccurred = true;
+             
             return nullptr;
         }
         AdvanceToken();
+           
         auto body = ParseBody();
         if (!body) {
-            errorOccurred = true;
+             
             return nullptr;
         }
 
         if (GetCurrentToken().type != TokenType::tk_end) {
-            errorOccurred = true;
+             
             return nullptr;
         }
         AdvanceToken();
@@ -377,15 +351,12 @@ class SyntaxAnalyzer {
 
     // new_version
     std::shared_ptr<Node> ParseParameters() {
-        if (errorOccurred) {
-            return nullptr;
-        }
 
         std::vector<std::shared_ptr<Node>> parameters;
 
         auto param = ParseParameterDeclaration();
         if (!param) {
-            errorOccurred = true;
+             
             return nullptr;
         }
         parameters.push_back(param);
@@ -395,7 +366,7 @@ class SyntaxAnalyzer {
 
             param = ParseParameterDeclaration();
             if (!param) {
-                errorOccurred = true;
+                 
                 return nullptr;
             }
             parameters.push_back(param);
@@ -406,25 +377,22 @@ class SyntaxAnalyzer {
 
     // new_version
     std::shared_ptr<Node> ParseParameterDeclaration() {
-        if (errorOccurred) {
-            return nullptr;
-        }
 
         auto identifier = ParseIdentifier();
         if (!identifier) {
-            errorOccurred = true;
+             
             return nullptr;
         }
 
         if (GetCurrentToken().type != TokenType::tk_colon) {
-            errorOccurred = true;
+             
             return nullptr;
         }
         AdvanceToken();
 
         auto type = ParseType();
         if (!type) {
-            errorOccurred = true;
+             
             return nullptr;
         }
 
@@ -433,9 +401,6 @@ class SyntaxAnalyzer {
 
     // new_version
     std::shared_ptr<Node> ParseType() {
-        if (errorOccurred) {
-            return nullptr;
-        }
 
         std::shared_ptr<Node> typeNode;
 
@@ -454,7 +419,7 @@ class SyntaxAnalyzer {
         } else if (currentToken == TokenType::tk_identifier) {
             typeNode = ParseIdentifier();
         } else {
-            errorOccurred = true;
+             
             return nullptr;
         }
 
@@ -463,9 +428,7 @@ class SyntaxAnalyzer {
 
     // new_version
     std::shared_ptr<Node> ParsePrimitiveType() {
-        if (errorOccurred) {
-            return nullptr;
-        }
+
 
         TokenType currentToken = GetCurrentToken().type;
         std::string typeName;
@@ -477,7 +440,7 @@ class SyntaxAnalyzer {
         } else if (currentToken == TokenType::tk_boolean) {
             typeName = "boolean";
         } else {
-            errorOccurred = true;
+             
             return nullptr;
         }
 
@@ -487,12 +450,9 @@ class SyntaxAnalyzer {
 
     // new_version
     std::shared_ptr<Node> ParseRecordType() {
-        if (errorOccurred) {
-            return nullptr;
-        }
 
         if (GetCurrentToken().type != TokenType::tk_record) {
-            errorOccurred = true;
+             
             return nullptr;
         }
         AdvanceToken();
@@ -502,14 +462,14 @@ class SyntaxAnalyzer {
         while (GetCurrentToken().type != TokenType::tk_end) {
             auto member = ParseVariableDeclaration();
             if (!member) {
-                errorOccurred = true;
+                 
                 return nullptr;
             }
             members.push_back(member);
         }
 
         if (GetCurrentToken().type != TokenType::tk_end) {
-            errorOccurred = true;
+             
             return nullptr;
         }
         AdvanceToken();
@@ -519,12 +479,9 @@ class SyntaxAnalyzer {
 
     // new_version
     std::shared_ptr<Node> ParseArrayType() {
-        if (errorOccurred) {
-            return nullptr;
-        }
 
         if (GetCurrentToken().type != TokenType::tk_array) {
-            errorOccurred = true;
+             
             return nullptr;
         }
         AdvanceToken();
@@ -536,20 +493,20 @@ class SyntaxAnalyzer {
             if (GetCurrentToken().type != TokenType::tk_close_bracket) {
                 sizeExpression = ParseExpression();
                 if (!sizeExpression) {
-                    errorOccurred = true;
+                     
                     return nullptr;
                 }
             }
 
             if (GetCurrentToken().type != TokenType::tk_close_bracket) {
-                errorOccurred = true;
+                 
                 return nullptr;
             }
             AdvanceToken();
         }
         auto elementType = ParseType();
         if (!elementType) {
-            errorOccurred = true;
+             
             return nullptr;
         }
 
@@ -558,11 +515,10 @@ class SyntaxAnalyzer {
 
     // new_version
     std::shared_ptr<Node> ParseBody() {
-        if (errorOccurred) {
-            return nullptr;
-        }
+       
 
         std::vector<std::shared_ptr<Node>> bodyNodes;
+
 
         while (true) {
             std::shared_ptr<Node> childNode;
@@ -579,7 +535,7 @@ class SyntaxAnalyzer {
         }
 
         if (bodyNodes.empty()) {
-            errorOccurred = true;
+             
             return nullptr;
         }
 
@@ -588,10 +544,6 @@ class SyntaxAnalyzer {
 
     // new_version
     std::shared_ptr<Node> ParseStatement() {
-        if (errorOccurred) {
-            return nullptr;
-        }
-
         std::shared_ptr<Node> statementNode;
 
         switch (GetCurrentToken().type) {
@@ -615,12 +567,12 @@ class SyntaxAnalyzer {
             break;
 
         default:
-            errorOccurred = true;
+             
             return nullptr;
         }
 
         if (!statementNode) {
-            errorOccurred = true;
+             
             return nullptr;
         }
 
@@ -629,24 +581,21 @@ class SyntaxAnalyzer {
 
     // new_version
     std::shared_ptr<Node> ParseAssignment() {
-        if (errorOccurred) {
-            return nullptr;
-        }
 
         auto modifiablePrimary = ParseModifiablePrimary();
         if (!modifiablePrimary) {
-            errorOccurred = true;
+             
             return nullptr;
         }
 
         if (GetCurrentToken().type != TokenType::tk_assign) {
-            errorOccurred = true;
+             
             return nullptr;
         }
         AdvanceToken();
         auto expression = ParseExpression();
         if (!expression) {
-            errorOccurred = true;
+             
             return nullptr;
         }
 
@@ -655,12 +604,11 @@ class SyntaxAnalyzer {
 
     // new_version
     std::shared_ptr<Node> ParseRoutineCall() {
-        if (errorOccurred)
-            return nullptr;
+
 
         auto identifier = ParseIdentifier();
         if (!identifier) {
-            errorOccurred = true;
+             
             return nullptr;
         }
 
@@ -673,7 +621,7 @@ class SyntaxAnalyzer {
                 while (true) {
                     auto expr = ParseExpression();
                     if (!expr) {
-                        errorOccurred = true;
+                         
                         return nullptr;
                     }
                     expressions.push_back(expr);
@@ -687,7 +635,7 @@ class SyntaxAnalyzer {
             }
 
             if (GetCurrentToken().type != TokenType::tk_close_parenthesis) {
-                errorOccurred = true;
+                 
                 return nullptr;
             }
             AdvanceToken();
@@ -698,35 +646,33 @@ class SyntaxAnalyzer {
 
     // new_version
     std::shared_ptr<Node> ParseWhileLoop() {
-        if (errorOccurred)
-            return nullptr;
 
         if (GetCurrentToken().type != TokenType::tk_while) {
-            errorOccurred = true;
+             
             return nullptr;
         }
         AdvanceToken();
 
         auto expression = ParseExpression();
         if (!expression) {
-            errorOccurred = true;
+             
             return nullptr;
         }
 
         if (GetCurrentToken().type != TokenType::tk_loop) {
-            errorOccurred = true;
+             
             return nullptr;
         }
         AdvanceToken();
 
         auto body = ParseBody();
         if (!body) {
-            errorOccurred = true;
+             
             return nullptr;
         }
 
         if (GetCurrentToken().type != TokenType::tk_end) {
-            errorOccurred = true;
+             
             return nullptr;
         }
         AdvanceToken();
@@ -736,23 +682,21 @@ class SyntaxAnalyzer {
 
     // new_version
     std::shared_ptr<Node> ParseForLoop() {
-        if (errorOccurred)
-            return nullptr;
 
         if (GetCurrentToken().type != TokenType::tk_for) {
-            errorOccurred = true;
+             
             return nullptr;
         }
         AdvanceToken();
 
         auto identifier = ParseIdentifier();
         if (!identifier) {
-            errorOccurred = true;
+             
             return nullptr;
         }
 
         if (GetCurrentToken().type != TokenType::tk_in) {
-            errorOccurred = true;
+             
             return nullptr;
         }
         AdvanceToken();
@@ -765,24 +709,24 @@ class SyntaxAnalyzer {
 
         auto range = ParseRange();
         if (!range) {
-            errorOccurred = true;
+             
             return nullptr;
         }
 
         if (GetCurrentToken().type != TokenType::tk_loop) {
-            errorOccurred = true;
+             
             return nullptr;
         }
         AdvanceToken();
 
         auto body = ParseBody();
         if (!body) {
-            errorOccurred = true;
+             
             return nullptr;
         }
 
         if (GetCurrentToken().type != TokenType::tk_end) {
-            errorOccurred = true;
+             
             return nullptr;
         }
         AdvanceToken();
@@ -798,19 +742,19 @@ class SyntaxAnalyzer {
     std::shared_ptr<Node> ParseRange() {
         auto startExpr = ParseExpression();
         if (!startExpr) {
-            errorOccurred = true;
+             
             return nullptr;
         }
 
         if (GetCurrentToken().type != TokenType::tk_range) {
-            errorOccurred = true;
+             
             return nullptr;
         }
         AdvanceToken();
 
         auto endExpr = ParseExpression();
         if (!endExpr) {
-            errorOccurred = true;
+             
             return nullptr;
         }
 
@@ -819,30 +763,33 @@ class SyntaxAnalyzer {
 
     // new_version
     std::shared_ptr<Node> ParseIfStatement() {
-        if (errorOccurred)
-            return nullptr;
+    
 
         if (GetCurrentToken().type != TokenType::tk_if) {
-            errorOccurred = true;
+             
             return nullptr;
         }
         AdvanceToken();
-
+    
         auto ifExpression = ParseExpression();
+
         if (!ifExpression) {
-            errorOccurred = true;
+             
             return nullptr;
         }
 
+   
         if (GetCurrentToken().type != TokenType::tk_then) {
-            errorOccurred = true;
+             
             return nullptr;
         }
+       
         AdvanceToken();
 
+    
         auto thenBody = ParseBody();
         if (!thenBody) {
-            errorOccurred = true;
+             
             return nullptr;
         }
 
@@ -851,13 +798,13 @@ class SyntaxAnalyzer {
             AdvanceToken();
             elseBody = ParseBody();
             if (!elseBody) {
-                errorOccurred = true;
+                 
                 return nullptr;
             }
         }
 
         if (GetCurrentToken().type != TokenType::tk_end) {
-            errorOccurred = true;
+             
             return nullptr;
         }
         AdvanceToken();
@@ -866,9 +813,6 @@ class SyntaxAnalyzer {
 
     // new_version
     std::shared_ptr<Node> ParseExpression() {
-        if (errorOccurred)
-            return nullptr;
-
         std::vector<std::shared_ptr<Node>> relations;
         relations.push_back(ParseRelation()); // Разбираем первый Relation
 
@@ -879,17 +823,13 @@ class SyntaxAnalyzer {
                 currentToken == TokenType::tk_or ||
                 currentToken == TokenType::tk_xor) {
 
-                // Сохраняем оператор логической операции
-                AdvanceToken(); // Пропускаем оператор
+                AdvanceToken(); 
 
-                // Разбираем следующий Relation и добавляем его в вектор
                 relations.push_back(ParseRelation());
             } else {
-                break; // Если оператор не найден, выходим из цикла
+                break; 
             }
         }
-
-        // Создаем узел Expression с собранными Relation
         return std::make_shared<Expression>(relations);
     }
 
@@ -969,7 +909,7 @@ class SyntaxAnalyzer {
             AdvanceToken();
             summandNode = ParseExpression();
             if (GetCurrentToken().type != TokenType::tk_close_parenthesis) {
-                errorOccurred = true;
+                 
                 return nullptr;
             }
             AdvanceToken();
@@ -1002,12 +942,12 @@ class SyntaxAnalyzer {
             AdvanceToken();
             primaryNode = ParseExpression();
             if (GetCurrentToken().type != TokenType::tk_close_parenthesis) {
-                errorOccurred = true;
+                 
                 return nullptr;
             }
             AdvanceToken();
         } else {
-            errorOccurred = true;
+             
             return nullptr;
         }
 
@@ -1030,7 +970,7 @@ class SyntaxAnalyzer {
             AdvanceToken();
         }
         if (GetCurrentToken().type != TokenType::tk_identifier) {
-            errorOccurred = true;
+             
             return nullptr;
         }
         auto identifier = std::make_shared<Identifier>(GetCurrentToken().value);
