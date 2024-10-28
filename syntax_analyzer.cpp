@@ -216,13 +216,8 @@ std::string toStrin(TokenType token) {
        
         std::shared_ptr<Node> declarationNode;
 
-        auto currentToken = GetCurrentToken().type;
+        auto &currentToken = GetCurrentToken().type;
         
-        if(currentToken == TokenType::tk_identifier){
-            declarationNode = ParseAssignment(); 
-        }
-        currentToken = GetCurrentToken().type;
-        // Here currentToken - gave false
         if (currentToken == TokenType::tk_var) {
             declarationNode = ParseVariableDeclaration();
         } else if (currentToken == TokenType::tk_type) {
@@ -540,7 +535,7 @@ std::string toStrin(TokenType token) {
             if (GetCurrentToken().type == TokenType::tk_return){
                 childNode = ParseReturnType();
             }
-            else if (GetCurrentToken().type == TokenType::tk_var || GetCurrentToken().type ==  TokenType::tk_identifier ||GetCurrentToken().type ==TokenType::tk_type) {
+            else if (GetCurrentToken().type == TokenType::tk_var  ||GetCurrentToken().type ==TokenType::tk_type) {
             childNode = ParseSimpleDeclaration();
             }
             else if (!childNode) {

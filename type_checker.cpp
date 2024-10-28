@@ -64,7 +64,6 @@ public:
                     if (routineDecl->body) {
                         queue.push(routineDecl->body.get());
                     }
-
                     if (routineDecl->parameters) {
                         for (const auto& param : dynamic_cast<Parameters*>(routineDecl->parameters.get())->children) {
                             auto paramDecl = dynamic_cast<ParameterDeclaration*>(param.get());
