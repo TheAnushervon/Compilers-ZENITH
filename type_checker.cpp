@@ -63,8 +63,9 @@ public:
 
                     if (routineDecl->body) {
                         queue.push(routineDecl->body.get());
+                        std:: cout << "\n\nBody___\n\n"<< queue.front() << "\n\n____\n\n"; 
                     }
-
+        
                     if (routineDecl->parameters) {
                         for (const auto& param : dynamic_cast<Parameters*>(routineDecl->parameters.get())->children) {
                             auto paramDecl = dynamic_cast<ParameterDeclaration*>(param.get());
