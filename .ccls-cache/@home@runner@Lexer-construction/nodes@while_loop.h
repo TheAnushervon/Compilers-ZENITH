@@ -16,8 +16,8 @@ public:
     std::string ToString(int counter) const override {
         std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
         std::string result = ots + "WhileLoop:\n" + 
-                             ots + "  Expression:\n" + expression->ToString(counter + 1) + "\n" + 
-                             ots + "  Body:\n" + body->ToString(counter + 1);
+                             ots + "  Expression:\n" + expression->ToString(counter + 2) + "\n" + 
+                             ots + "  Body:\n" + body->ToString(counter + 2);
         return result;
     }
 };

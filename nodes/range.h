@@ -18,7 +18,7 @@ public:
         std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
         return ots + "Range:\n" + 
                ots + "  Start: " + (start ? start->ToString(counter + 1) : "None") + "\n" +
-               ots + "  End: " + (end ? end->ToString(counter + 1) : "None");
+               ots + "  End: " + (end ? end->ToString(counter + 2) : "None");
     }
 };
 

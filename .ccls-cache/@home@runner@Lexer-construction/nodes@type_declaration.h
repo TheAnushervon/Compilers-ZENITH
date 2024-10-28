@@ -15,8 +15,8 @@ public:
     std::string ToString(int counter) const override {
         std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
         return ots + "TypeDeclaration:\n" +
-               identifier->ToString(counter + 1) + 
-               type->ToString(counter + 1);
+               identifier->ToString(counter + 2) + 
+               type->ToString(counter + 2);
     }
 };
 

@@ -17,9 +17,9 @@ public:
         std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
         std::string result = ots + "RoutineCall:\n";
 
-        result += identifier->ToString(counter + 1);
+        result += identifier->ToString(counter + 2);
         for (const auto& item : expressions) {
-            result += item->ToString(counter + 1);
+            result += item->ToString(counter + 2);
         } 
 
         return result;

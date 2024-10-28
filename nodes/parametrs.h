@@ -27,7 +27,7 @@ public:
         std::string result = ots + "Parameters:\n";
 
         for (const auto& child : children) {
-            result += child->ToString(counter + 1);
+            result += child->ToString(counter + 2);
         }
 
         // Удаление последней запятой и пробела

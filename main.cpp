@@ -125,6 +125,7 @@ int main() {
     for (int i = 0; i < output.size(); i++) {
         if (output[i].type == TokenType::tk_newline) {
             output.erase(output.begin() + i);
+            i--;
         }
     }
 

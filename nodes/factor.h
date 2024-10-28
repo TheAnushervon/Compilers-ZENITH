@@ -17,7 +17,7 @@ public:
         std::string result = ots + "Factor:\n";
 
         for (const auto& simple : summands) {
-            result += simple->ToString(counter + 1) + "\n"; // Перенос строки для каждого summand
+            result += simple->ToString(counter + 2) + "\n"; // Перенос строки для каждого summand
         }
 
         return result;

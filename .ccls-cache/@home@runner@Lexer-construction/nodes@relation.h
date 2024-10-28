@@ -17,7 +17,7 @@ public:
         std::string result = ots + "Relation:\n";
 
         for (const auto& simple : simples) {
-            result += simple->ToString(counter + 1) + " ";
+            result += simple->ToString(counter + 2) + " ";
         }
 
         return result;
