@@ -100,7 +100,7 @@ Handler::parse_tokens(const std::string &fileContents) {
                     }
                     potential = "";
                 }
-                if (check_for_record_dot(potential)) {
+                else if (check_for_record_dot(potential)) {
                     std::string substr = "";
                     for (int j = 0; j < potential.size(); j++) {
                         if (potential[j] != '.')

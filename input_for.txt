@@ -1,6 +1,9 @@
 routine CheckAndPrintSolution(a: real, b: real) is
-        var a: integer is 5
-        a := 3
+        type Point is record
+            var x : integer
+            var y : integer
+        end
+        a.x := 3
 end
 
 
