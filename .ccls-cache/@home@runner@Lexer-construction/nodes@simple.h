@@ -17,7 +17,7 @@ public:
         std::string result = ots + "Simple:\n";
 
         for (const auto& factor : factors) {
-            result += factor->ToString(counter + 1) + "\n";
+            result += factor->ToString(counter + 2) + "\n";
         }
 
         return result;

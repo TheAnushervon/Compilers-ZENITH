@@ -3,6 +3,7 @@
 
 #include "node.h"
 #include <memory>
+#include <iostream>
 
 class IfStatement : public Node {
 public:
@@ -17,10 +18,12 @@ public:
     std::string ToString(int counter) const override {
         std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
         std::string result = ots + "IfStatement:\n";
+        result += ifExpression->ToString(counter+2);
+        
 
-        result += thenBody->ToString(counter + 1);
+        result += thenBody->ToString(counter + 2);
         if (elseBody != nullptr) {
-            result += elseBody->ToString(counter + 1);
+            result += elseBody->ToString(counter + 2);
         }
 
         return ots + result;

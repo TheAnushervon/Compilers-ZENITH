@@ -22,17 +22,17 @@ public:
         std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
         std::string result = ots + "RoutineDeclaration:\n";
 
-        result += identifier->ToString(counter + 1) + "\n";
-        result += parameters->ToString(counter + 1) + "\n";
+        result += identifier->ToString(counter + 2) + "\n";
+        result += parameters->ToString(counter + 2) + "\n";
 
         if (returnType) {
-            result += returnType->ToString(counter + 1) + "\n";
+            result += returnType->ToString(counter + 2) + "\n";
         } else {
             result += ots + "  void\n";
         }
 
         if (body) {
-            result += body->ToString(counter + 1);
+            result += body->ToString(counter + 2);
         } else {
             result += ots + "  No body\n";
         }

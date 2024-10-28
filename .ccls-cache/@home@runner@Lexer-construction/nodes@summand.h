@@ -14,7 +14,7 @@ public:
 
     std::string ToString(int counter) const override {
         std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
-        std::string result = ots + "Summand:\n" + child->ToString(counter + 1);
+        std::string result = ots + "Summand:\n" + child->ToString(counter + 2);
         return result;
     }
 };

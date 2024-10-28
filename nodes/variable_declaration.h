@@ -19,13 +19,13 @@ public:
         std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
         std::string result = ots + "VariableDeclaration:\n";
 
-        result += identifier->ToString(counter + 1);
+        result += identifier->ToString(counter + 2);
 
         if (type != nullptr) {
-            result += type->ToString(counter + 1);
+            result += type->ToString(counter + 2);
         }
         if (expression != nullptr) {
-            result += expression->ToString(counter + 1);
+            result += expression->ToString(counter + 2);
         }
 
         return result;

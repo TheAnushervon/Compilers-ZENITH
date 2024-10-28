@@ -86,8 +86,6 @@ class SyntaxAnalyzer {
                           << "'\n";
                 return nullptr;
             }
-
-            AdvanceToken();
         }
 
         return program;
@@ -773,24 +771,16 @@ std::string toStrin(TokenType token) {
 
     // new_version
     std::shared_ptr<Node> ParseIfStatement() {
-    
-
         if (GetCurrentToken().type != TokenType::tk_if) {
-             
             return nullptr;
         }
         AdvanceToken();
-    
+        //подумать
         auto ifExpression = ParseExpression();
-
         if (!ifExpression) {
-             
             return nullptr;
         }
-
-   
         if (GetCurrentToken().type != TokenType::tk_then) {
-             
             return nullptr;
         }
        
@@ -857,6 +847,7 @@ std::string toStrin(TokenType token) {
             currentToken == TokenType::tk_equal ||
             currentToken == TokenType::tk_not_equal) {
 
+            //warning: добавить в ноду
             auto operatorToken = GetCurrentToken();
             AdvanceToken();
 
@@ -898,6 +889,7 @@ std::string toStrin(TokenType token) {
 
             if (currentToken == TokenType::tk_add ||
                 currentToken == TokenType::tk_subtract) {
+                //warning: добавить в ноды
                 auto operatorToken = GetCurrentToken();
                 AdvanceToken();
 
@@ -910,11 +902,13 @@ std::string toStrin(TokenType token) {
     }
 
     // new_version
+//cлагаемое 
     std::shared_ptr<Node> ParseSummand() {
         std::shared_ptr<Node> summandNode;
 
         TokenType currentToken = GetCurrentToken().type;
 
+        // (5 + 6)
         if (currentToken == TokenType::tk_open_parenthesis) {
             AdvanceToken();
             summandNode = ParseExpression();
@@ -938,6 +932,7 @@ std::string toStrin(TokenType token) {
         TokenType currentToken = GetCurrentToken().type;
 
         if (currentToken == TokenType::tk_num) {
+            //warning: только int
             int numericValue = std::stoi(GetCurrentToken().value);
             primaryNode = std::make_shared<LiteralPrimary>(numericValue);
             AdvanceToken();
@@ -946,7 +941,8 @@ std::string toStrin(TokenType token) {
             bool boolValue = (currentToken == TokenType::tk_true);
             primaryNode = std::make_shared<LiteralPrimary>(boolValue);
             AdvanceToken();
-        } else if (currentToken == TokenType::tk_identifier) {
+        } //пока здесь не были
+        else if (currentToken == TokenType::tk_identifier) {
             primaryNode = ParseModifiablePrimary();
         } else if (currentToken == TokenType::tk_open_parenthesis) {
             AdvanceToken();
@@ -966,16 +962,26 @@ std::string toStrin(TokenType token) {
 
     // new_version
     std::shared_ptr<Node> ParseModifiablePrimary() {
+        //нужен ли AdvanceToken?
         auto modifiablePrimary = std::make_shared<ModifiablePrimary>();
         modifiablePrimary->identifier = ParseIdentifier();
+        if (GetCurrentToken().type == TokenType::tk_dot) {
+            AdvanceToken();
         modifiablePrimary->specialIdentifier = ParseIdentifier();
+        }
+        if (GetCurrentToken().type == TokenType::tk_open_bracket) {
+            AdvanceToken();
         modifiablePrimary->expression = ParseExpression();
+             AdvanceToken();
+        }
         return modifiablePrimary;
     }
 
     // new_version
     std::shared_ptr<Node> ParseIdentifier() {
         // for case Identifier { . Identifier...}
+        //record.p 
+        //record[56]
         if (GetCurrentToken().type == TokenType::tk_dot) {
             AdvanceToken();
         }

@@ -17,7 +17,7 @@ public:
         std::string result = ots + "RecordType:\n";
 
         for (const auto& member : members) {
-            result += member->ToString(counter + 1) + "\n";
+            result += member->ToString(counter + 2) + "\n";
         }
 
         return result;

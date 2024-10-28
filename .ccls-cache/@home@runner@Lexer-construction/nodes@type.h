@@ -13,8 +13,8 @@ public:
     Type(std::shared_ptr<Node> childNode) : child(childNode) {}
 
     std::string ToString(int counter) const override {
-        std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
-        std::string result = ots + "Type:\n" + child->ToString(counter + 1);
+        std::string ots(counter*2, ' '); // Отступы с учетом уровня вложенности
+        std::string result = ots + "Type:\n" + child->ToString(counter + 2);
         return result; 
     }
 };

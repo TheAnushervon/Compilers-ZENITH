@@ -17,7 +17,7 @@ public:
         std::string result = ots + "Expression:\n";
 
         for (const auto& relation : relations) {
-            result += relation->ToString(count + 1) + " ";
+            result += relation->ToString(count + 2) + " ";
         }
 
         // Удаление лишнего пробела в конце строки, если есть элементы

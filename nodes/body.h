@@ -17,7 +17,7 @@ public:
         std::string result = ots + "Body:\n";
 
         for (const auto& stmt : statements) {
-            result += stmt->ToString(counter + 1) + "\n";
+            result += stmt->ToString(counter + 2) + "\n";
         }
 
         return result;

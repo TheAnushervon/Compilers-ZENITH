@@ -13,7 +13,7 @@ public:
 
     std::string ToString(int counter) const override {
         std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
-        return ots + "ReturnType:\n" + type->ToString(counter + 1);
+        return ots + "ReturnType:\n" + type->ToString(counter + 2);
     }
 };
 

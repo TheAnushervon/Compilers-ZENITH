@@ -20,12 +20,12 @@ public:
         std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
         std::string result = ots + "ModifiablePrimary:\n";
 
-        result += identifier->ToString(counter + 1) + "\n";
+        result += identifier->ToString(counter + 2) + "\n";
         if (specialIdentifier != nullptr) {
-            result += specialIdentifier->ToString(counter + 1);
+            result += specialIdentifier->ToString(counter + 2);
         }
         if (expression != nullptr) {
-            result += expression->ToString(counter + 1);
+            result += expression->ToString(counter + 2);
         }
 
         return result;
