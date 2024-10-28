@@ -5,17 +5,20 @@
 #include <memory>
 
 class Assignment : public Node {
-  public:
+public:
     //: ModifiablePrimary := Expression 
     std::shared_ptr<Node> modifiablePrimary;
     std::shared_ptr<Node> expression;
 
     Assignment(std::shared_ptr<Node> modifiablePrim, std::shared_ptr<Node> expr)
-    : modifiablePrimary(modifiablePrim), expression(expr) {}
+        : modifiablePrimary(modifiablePrim), expression(expr) {}
 
-    std::string ToString(int counter) const override {
-        std::string result;
-        result = "Assignment: " + modifiablePrimary->ToString(counter) + expression->ToString(counter);
+    std::string ToString(int count) const override {
+        std::string ots(count * 2, ' '); // Отступы с учетом уровня вложенности
+        std::string result = ots + "Assignment:\n";
+
+        result += ots + "  ModifiablePrimary:\n" + modifiablePrimary->ToString(count + 2);
+        result += ots + "  Expression:\n" + expression->ToString(count + 2);
 
         return result;
     }

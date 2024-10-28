@@ -6,16 +6,17 @@
 #include <string>
 
 class Type : public Node {
-  public:
-  //PrimitiveType | UserType | Identifier 
-   std::shared_ptr<Node> child;
+public:
+    // PrimitiveType | UserType | Identifier 
+    std::shared_ptr<Node> child;
 
-  Type(std::shared_ptr<Node> childNode) : child(childNode) {}
+    Type(std::shared_ptr<Node> childNode) : child(childNode) {}
+
     std::string ToString(int counter) const override {
-      std::string result = "Type: " + child->ToString(2);
-      return result; 
+        std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
+        std::string result = ots + "Type:\n" + child->ToString(counter + 1);
+        return result; 
     }
-
 };
 
 #endif // TYPE_H

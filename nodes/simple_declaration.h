@@ -11,13 +11,11 @@ public:
 
     SimpleDeclaration(std::shared_ptr<Node> childNode) : child(childNode) {}
 
-   std::string ToString(int counter) const override {
-       std::string y = "SimpleDeclaration: " + child->ToString(2);
-       return y;
-   }
-
-
-
+    std::string ToString(int counter) const override {
+        std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
+        std::string result = ots + "SimpleDeclaration:\n" + child->ToString(counter + 1);
+        return result;
+    }
 };
 
 #endif // SIMPLEDECLARATION_H

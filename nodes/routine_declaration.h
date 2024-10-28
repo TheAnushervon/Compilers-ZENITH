@@ -7,7 +7,6 @@
 
 class RoutineDeclaration : public Node {
 public:
-
     std::shared_ptr<Node> identifier;
     std::shared_ptr<Node> parameters;
     std::shared_ptr<Node> returnType;  
@@ -20,20 +19,22 @@ public:
         : identifier(identifier), parameters(parameters), returnType(returnType), body(body) {}
 
     std::string ToString(int counter) const override {
-        std::string result = "RoutineDeclaration: ";
-        result += identifier->ToString(counter) + " ";
-        result += parameters->ToString(counter) + " ";
+        std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
+        std::string result = ots + "RoutineDeclaration:\n";
+
+        result += identifier->ToString(counter + 1) + "\n";
+        result += parameters->ToString(counter + 1) + "\n";
 
         if (returnType) {
-            result += returnType->ToString(counter) + " ";
+            result += returnType->ToString(counter + 1) + "\n";
         } else {
-            result += "void ";
+            result += ots + "  void\n";
         }
 
         if (body) {
-            result += body->ToString(counter);
+            result += body->ToString(counter + 1);
         } else {
-            result += "No body";
+            result += ots + "  No body\n";
         }
 
         return result;

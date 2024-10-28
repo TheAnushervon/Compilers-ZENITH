@@ -5,16 +5,17 @@
 #include <string>
 
 class Identifier : public Node {
-  public:
+public:
     std::string name;
 
     Identifier(const std::string &name) : name(name) {}
 
     std::string ToString(int counter) const override {
-      std::string result = "Identifiert: " + name;
-      return result; 
+        std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
+        std::string result = ots + "Identifier:\n";
+        result += ots + "  " + name + "\n"; // Отображение имени с дополнительным отступом
+        return result;
     }
-
 };
 
 #endif // IDENTIFIER_H

@@ -6,7 +6,7 @@
 #include <memory>
 
 class ParameterDeclaration : public Node {
-  public:
+public:
     std::shared_ptr<Node> identifier;
     std::shared_ptr<Node> type;
 
@@ -15,17 +15,14 @@ class ParameterDeclaration : public Node {
         : identifier(identifier), type(type) {}
 
     std::string ToString(int counter) const override {
-        std::string result = "";
-        for (int i = 0; i < counter; i++) {
-            result += " ";
-        }
-        result += "Parameter: " + identifier->ToString(counter) + "\n";
-        for (int i = 0; i < counter + 2; i++) {
-            result += " ";
-        }
-        return result += "Type: " + type->ToString(counter) + "\n";
-    }
+        std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
+        std::string result = ots + "ParameterDeclaration:\n";
 
+        result += std::string(counter * 2 + 2, ' ') + "Parameter:\n" + identifier->ToString(counter + 1);
+        result += std::string(counter * 2 + 4, ' ') + type->ToString(counter + 1);
+
+        return result;
+    }
 };
 
 #endif // PARAMETERDECLARATION_H
