@@ -2,11 +2,12 @@ routine CheckAndPrintSolution(a: real, b: real, a: real) is
     if a[0] /= 0.0 then
         var solution: real is 5
     else
-        var new_a: real is 3
+        var new_a: real is 3.0
     end
     while i < 10 loop
         var i: real is 1
     end
+    return b
 end
 
 
