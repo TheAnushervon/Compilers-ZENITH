@@ -14,3 +14,14 @@ array[ - identifier
 
 Convert after to json-format 
 
+
+
+          Simplep(*)
+            - 5
+            -Factor(+)
+            -- 6
+            -- 7
+
+*,5,+,6,7
+обратная польская натиция
+

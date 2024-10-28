@@ -2,27 +2,30 @@
 #define ARRAYTYPE_H
 
 #include <memory>
-#include "type.h"
-#include "expression.h"
+#include "node.h"
 
-class ArrayType : public Type {
+class ArrayType : public Node {
 public:
+    std::shared_ptr<Node> type;  
+    std::shared_ptr<Node> expression;
 
-    ArrayType(std::shared_ptr<Type> elementType, std::shared_ptr<Expression> size = nullptr)
-        : elementType(elementType), size(size) {}
+    ArrayType(std::shared_ptr<Node> elementType, std::shared_ptr<Node> expression = nullptr)
+        : type(elementType), expression(expression) {}
 
-    std::string ToString(int counter) const override {
-        std::string result = "array [";
-        if (size) {
-            result += size->ToString(2);
+    std::string ToString(int count) const override {
+        std::string ots(count * 2, ' '); // Отступы с учетом уровня вложенности
+        std::string result = ots + "ArrayType:\n";
+
+        if (expression) {
+            result += ots + "  Expression:\n" + expression->ToString(count + 2);
+        } else {
+            result += ots + "  Expression: None\n";
         }
-        result += "] of " + elementType->ToString(2);
+
+        result += ots + "  Type:\n" + type->ToString(count + 2);
+
         return result;
     }
-
-private:
-    std::shared_ptr<Type> elementType;  
-    std::shared_ptr<Expression> size;   
 };
 
 #endif // ARRAYTYPE_H

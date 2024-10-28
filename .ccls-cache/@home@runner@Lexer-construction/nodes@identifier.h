@@ -1,26 +1,21 @@
 #ifndef IDENTIFIER_H
 #define IDENTIFIER_H
 
-#include <string>
-#include <iostream>
 #include "node.h"
+#include <string>
 
 class Identifier : public Node {
 public:
-    explicit Identifier(const std::string& name) : name(name) {}
-    std::string GetName() const {
-        return name;
-    }
+    std::string name;
+
+    Identifier(const std::string &name) : name(name) {}
 
     std::string ToString(int counter) const override {
-        return name;
+        std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
+        std::string result = ots + "Identifier:\n";
+        result += ots + "  " + name + "\n"; // Отображение имени с дополнительным отступом
+        return result;
     }
-    void Print() const {
-        std::cout << "Identifier: " << name << std::endl;
-    }
-
-private:
-    std::string name; 
 };
 
 #endif // IDENTIFIER_H

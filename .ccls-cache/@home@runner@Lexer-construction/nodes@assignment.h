@@ -1,23 +1,27 @@
 #ifndef ASSIGNMENT_H
 #define ASSIGNMENT_H
 
+#include "node.h"
 #include <memory>
-#include "statement.h"
-#include "expression.h"
-#include "identifier.h"
 
-class Assignment : public Statement {
+class Assignment : public Node {
 public:
-    Assignment(std::shared_ptr<Identifier> variable, std::shared_ptr<Expression> expression)
-        : variable(variable), expression(expression) {}
+    //: ModifiablePrimary := Expression 
+    std::shared_ptr<Node> modifiablePrimary;
+    std::shared_ptr<Node> expression;
 
-    std::string ToString(int counter) const override {
-        return variable->ToString(2) + " := " + expression->ToString(2);
+    Assignment(std::shared_ptr<Node> modifiablePrim, std::shared_ptr<Node> expr)
+        : modifiablePrimary(modifiablePrim), expression(expr) {}
+
+    std::string ToString(int count) const override {
+        std::string ots(count * 2, ' '); // Отступы с учетом уровня вложенности
+        std::string result = ots + "Assignment:\n";
+
+        result += ots + "  ModifiablePrimary:\n" + modifiablePrimary->ToString(count + 2);
+        result += ots + "  Expression:\n" + expression->ToString(count + 2);
+
+        return result;
     }
-
-private:
-    std::shared_ptr<Identifier> variable;    
-    std::shared_ptr<Expression> expression; 
 };
 
 #endif // ASSIGNMENT_H

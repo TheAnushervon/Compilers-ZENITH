@@ -2,17 +2,22 @@
 #define STATEMENT_H
 
 #include <string>
-#include <iostream>
+#include <memory>
 #include "node.h"
 
 class Statement : public Node {
 public:
-    virtual ~Statement() = default;
+    // Assignment | RoutineCall 
+    // | WhileLoop | ForLoop | /* ForeachLoop */ 
+    // | IfStatement
+    std::shared_ptr<Node> child;
 
-    virtual std::string ToString(int counter) const override = 0;
+    Statement(std::shared_ptr<Node> childNode) : child(childNode) {}
 
-    virtual void Print() const {
-        std::cout << "Statement: " << ToString(2) << std::endl;
+    std::string ToString(int count) const override {
+        std::string ots(count * 2, ' '); // Отступы с учетом уровня вложенности
+        std::string result = ots + "Statement:\n" + child->ToString(count + 1);
+        return result;
     }
 };
 

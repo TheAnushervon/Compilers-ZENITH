@@ -2,26 +2,28 @@
 #define PROGRAM_H
 
 #include "node.h"
-#include "routine_declaration.h"
-#include "simple_declaration.h"
+
 #include <memory>
 #include <vector>
 
 class Program : public Node {
   public:
-    Program(const std::vector<std::shared_ptr<SimpleDeclaration>>
+    //Program : { SimpleDeclaration | RoutineDeclaration }
+    std::vector<std::shared_ptr<Node>> simpleDeclarations;
+    std::vector<std::shared_ptr<Node>> routineDeclarations;
+    Program(const std::vector<std::shared_ptr<Node>>
                 &simpleDeclarations = {},
-            const std::vector<std::shared_ptr<RoutineDeclaration>>
+            const std::vector<std::shared_ptr<Node>>
                 &routineDeclarations = {})
         : simpleDeclarations(simpleDeclarations),
           routineDeclarations(routineDeclarations) {}
 
-    void AddSimpleDeclaration(std::shared_ptr<SimpleDeclaration> declaration) {
+    void AddSimpleDeclaration(std::shared_ptr<Node> declaration) {
         simpleDeclarations.push_back(declaration);
     }
 
     void
-    AddRoutineDeclaration(std::shared_ptr<RoutineDeclaration> declaration) {
+    AddRoutineDeclaration(std::shared_ptr<Node> declaration) {
         routineDeclarations.push_back(declaration);
     }
 
@@ -39,11 +41,6 @@ class Program : public Node {
         return result;
     }
 
-    void Print() { std::cout << ToString(2) << std::endl; }
-
-  private:
-    std::vector<std::shared_ptr<SimpleDeclaration>> simpleDeclarations;
-    std::vector<std::shared_ptr<RoutineDeclaration>> routineDeclarations;
 };
 
 #endif // PROGRAM_H

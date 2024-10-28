@@ -106,6 +106,8 @@ std::string toString(TokenType token) {
         return "tk_identifier";
     case TokenType::tk_terminate:
         return "tk_terminate";
+        case TokenType::tk_return:
+        return "tk_return";
     default:
         return "Unknown token";
     }
@@ -123,6 +125,7 @@ int main() {
     for (int i = 0; i < output.size(); i++) {
         if (output[i].type == TokenType::tk_newline) {
             output.erase(output.begin() + i);
+            i--;
         }
     }
 
