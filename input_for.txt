@@ -1,6 +1,6 @@
 routine CheckAndPrintSolution(a: real, b: real) is
-        var a: integer is 5
         a := 3
+        var a: integer is 5
 end
 
 
