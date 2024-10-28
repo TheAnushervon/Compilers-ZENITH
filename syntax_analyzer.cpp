@@ -217,7 +217,11 @@ std::string toStrin(TokenType token) {
         std::shared_ptr<Node> declarationNode;
 
         auto& currentToken = GetCurrentToken().type;
-       
+        
+        if(currentToken == TokenType::tk_identifier){
+            declarationNode = ParseAssignment(); 
+        }
+        
         if (currentToken == TokenType::tk_var) {
             declarationNode = ParseVariableDeclaration();
         } else if (currentToken == TokenType::tk_type) {

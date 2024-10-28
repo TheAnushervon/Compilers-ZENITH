@@ -1,22 +1,7 @@
-routine CheckAndPrintSolution(a: real, b: real) : real is
-
-
-     var new_a: real is 3.0
-      return new_a
-
-    if a[0] /= 0.0 then
-        var solution: real is 5
-    else
-        var new_a: real is 3.0
-    end
-
-
-
+routine CheckAndPrintSolution(a: real, b: real) is
+        var a: integer is 5
+        a := 3
 end
-
-
-var a: integer is 5
-
 
 
 
