@@ -28,6 +28,7 @@
 #include "nodes/user_type.h"
 #include "nodes/variable_declaration.h"
 #include "nodes/while_loop.h"
+#include "nodes/return_type.h"
 
 #include "tokens/enums/token_type.h"
 #include "tokens/structs/token.h"
@@ -35,6 +36,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <algorithm>
 
 class SyntaxAnalyzer {
   public:
@@ -530,8 +532,13 @@ std::string toStrin(TokenType token) {
 
         while (true) {
             std::shared_ptr<Node> childNode;
+            if (GetCurrentToken().type == TokenType::tk_return){
+                childNode = ParseReturnType();
+            }
+            else if (GetCurrentToken().type == TokenType::tk_var || GetCurrentToken().type ==  TokenType::tk_identifier ||GetCurrentToken().type ==TokenType::tk_type) {
             childNode = ParseSimpleDeclaration();
-            if (!childNode) {
+            }
+            else if (!childNode) {
                 childNode = ParseStatement();
             }
 
@@ -933,8 +940,14 @@ std::string toStrin(TokenType token) {
 
         if (currentToken == TokenType::tk_num) {
             //warning: только int
-            int numericValue = std::stoi(GetCurrentToken().value);
-            primaryNode = std::make_shared<LiteralPrimary>(numericValue);
+            if (std::any_of(GetCurrentToken().value.begin(), GetCurrentToken().value.end(), [](char c) { return c == '.'; })) {
+                double number = std::stod(GetCurrentToken().value);
+                primaryNode = std::make_shared<LiteralPrimary>(number);
+            } else {
+                int numericValue = std::stoi(GetCurrentToken().value);
+                primaryNode = std::make_shared<LiteralPrimary>(numericValue);
+            }
+
             AdvanceToken();
         } else if (currentToken == TokenType::tk_true ||
                    currentToken == TokenType::tk_false) {
@@ -991,5 +1004,14 @@ std::string toStrin(TokenType token) {
         auto identifier = std::make_shared<Identifier>(GetCurrentToken().value);
         AdvanceToken();
         return identifier;
+    }
+
+    std::shared_ptr<Node> ParseReturnType() {
+        if (GetCurrentToken().type != TokenType::tk_return) {
+            return nullptr;
+        }
+        AdvanceToken();
+        auto returnType = ParseModifiablePrimary();
+        return std::make_shared<ReturnType>(returnType);
     }
 };
