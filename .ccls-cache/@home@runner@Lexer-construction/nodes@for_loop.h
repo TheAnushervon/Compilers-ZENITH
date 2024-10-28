@@ -1,29 +1,40 @@
 #ifndef FORLOOP_H
 #define FORLOOP_H
 
+#include "node.h"
 #include <memory>
-#include "statement.h"
-#include "expression.h"
-#include "statement.h"
-#include "identifier.h"
-// check 
-class ForLoop : public Statement {
-public:
-    ForLoop(std::shared_ptr<Identifier> variable, std::shared_ptr<Expression> start, 
-            std::shared_ptr<Expression> end, std::shared_ptr<Statement> body, bool reverse = false)
-        : variable(variable), start(start), end(end), body(body), reverse(reverse) {}
 
-    std::string ToString(int counter) const override {
-        std::string direction = reverse ? "reverse " : "";
-        return "for " + variable->ToString(0) + " in " + direction + start->ToString(0) + " .. " + end->ToString(0) + " loop " + body->ToString(0) + " end";
+class ForLoop : public Node {
+public:
+    std::shared_ptr<Node> identifier;
+    std::shared_ptr<Node> range;
+    std::shared_ptr<Node> body;
+    bool isReverse; 
+
+    ForLoop(std::shared_ptr<Node> id, std::shared_ptr<Node> rng, std::shared_ptr<Node> bdy, bool reverse = false)
+        : identifier(id), range(rng), body(bdy), isReverse(reverse) {}
+
+    void setReverse(bool reverse) {
+        isReverse = reverse;
+    }
+    bool getReverse() const {
+        return isReverse;
     }
 
-private:
-    std::shared_ptr<Identifier> variable;  
-    std::shared_ptr<Expression> start;    
-    std::shared_ptr<Expression> end;       
-    std::shared_ptr<Statement> body;       
-    bool reverse;                         
+    std::string ToString(int counter) const override {
+        std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
+        std::string result = ots + "ForLoop:\n";
+
+        if (isReverse) {
+            result += ots + "  (reverse)\n";
+        }
+
+        result += ots + "  Identifier:\n" + identifier->ToString(counter + 2) + "\n";
+        result += ots + "  Range:\n" + range->ToString(counter + 2) + "\n";
+        result += ots + "  Body:\n" + body->ToString(counter + 2);
+
+        return result;
+    }
 };
 
 #endif // FORLOOP_H

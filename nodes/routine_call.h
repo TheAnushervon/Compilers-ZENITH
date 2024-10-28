@@ -7,19 +7,21 @@
 
 class RoutineCall : public Node {
 public:
-
     std::shared_ptr<Node> identifier;              
     std::vector<std::shared_ptr<Node>> expressions;
-    RoutineCall(std::shared_ptr<Node> id,                 std::vector<std::shared_ptr<Node>> exprs)
-: identifier(id), expressions(exprs) {}
 
+    RoutineCall(std::shared_ptr<Node> id, std::vector<std::shared_ptr<Node>> exprs)
+        : identifier(id), expressions(exprs) {}
 
     std::string ToString(int counter) const override {
-       std::string result = "RoutineCall: ";
-        result += identifier->ToString(counter);
+        std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
+        std::string result = ots + "RoutineCall:\n";
+
+        result += identifier->ToString(counter + 1);
         for (const auto& item : expressions) {
-            result += item->ToString(counter);
-        }
+            result += item->ToString(counter + 1);
+        } 
+
         return result;
     }   
 };

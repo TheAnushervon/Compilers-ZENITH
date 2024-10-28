@@ -1,30 +1,30 @@
 #ifndef IFSTATEMENT_H
 #define IFSTATEMENT_H
 
+#include "node.h"
 #include <memory>
-#include "statement.h"
-#include "expression.h"
 
-class IfStatement : public Statement {
+class IfStatement : public Node {
 public:
-IfStatement(std::shared_ptr<Expression> condition, 
-        std::shared_ptr<Statement> trueBody, 
-        std::shared_ptr<Statement> falseBody = nullptr)
-: condition(condition), trueBody(trueBody), falseBody(falseBody) {}
+    // if Expression then Body [ else Body ] end 
+    std::shared_ptr<Node> ifExpression;
+    std::shared_ptr<Node> thenBody;
+    std::shared_ptr<Node> elseBody;
+
+    IfStatement(std::shared_ptr<Node> expression, std::shared_ptr<Node> thenBodyNode, std::shared_ptr<Node> elseBodyNode = nullptr)
+        : ifExpression(expression), thenBody(thenBodyNode), elseBody(elseBodyNode) {}
 
     std::string ToString(int counter) const override {
-        std::string result = "if " + condition->ToString(0) + " then " + trueBody->ToString(0);
-        if (falseBody) {
-            result += " else " + falseBody->ToString(0);
-        }
-        result += " end";
-        return result;
-    }
+        std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
+        std::string result = ots + "IfStatement:\n";
 
-private:
-std::shared_ptr<Expression> condition;
-std::shared_ptr<Statement> trueBody;
-std::shared_ptr<Statement> falseBody;   
+        result += thenBody->ToString(counter + 1);
+        if (elseBody != nullptr) {
+            result += elseBody->ToString(counter + 1);
+        }
+
+        return ots + result;
+    }
 };
 
 #endif // IFSTATEMENT_H

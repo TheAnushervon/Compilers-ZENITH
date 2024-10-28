@@ -2,16 +2,21 @@
 #define TYPE_H
 
 #include "node.h"
-#include <iostream>
+#include <memory>
 #include <string>
 
 class Type : public Node {
-  public:
-    virtual ~Type() = default;
+public:
+    // PrimitiveType | UserType | Identifier 
+    std::shared_ptr<Node> child;
 
-    // virtual void Print() const {
-    //     std::cout << "Type: " << ToString() << std::endl;
-    // }
+    Type(std::shared_ptr<Node> childNode) : child(childNode) {}
+
+    std::string ToString(int counter) const override {
+        std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
+        std::string result = ots + "Type:\n" + child->ToString(counter + 1);
+        return result; 
+    }
 };
 
 #endif // TYPE_H

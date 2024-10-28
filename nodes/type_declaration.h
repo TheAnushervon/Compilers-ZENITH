@@ -6,7 +6,6 @@
 
 class TypeDeclaration : public Node {
 public:
-
     std::shared_ptr<Node> identifier;
     std::shared_ptr<Node> type;
 
@@ -14,9 +13,11 @@ public:
         : identifier(identifier), type(type) {}
 
     std::string ToString(int counter) const override {
-        return "type " + identifier->ToString(2) + " is " + type->ToString(2);
+        std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
+        return ots + "TypeDeclaration:\n" +
+               identifier->ToString(counter + 1) + 
+               type->ToString(counter + 1);
     }
-
 };
 
 #endif // TYPEDECLARATION_H

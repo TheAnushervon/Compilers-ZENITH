@@ -2,17 +2,30 @@
 #define EXPRESSION_H
 
 #include <string>
-#include <iostream>
+#include <memory>
+#include <vector>
 #include "node.h"
 
-class Expression : public Node{
+class Expression : public Node {
 public:
-    virtual ~Expression() = default;
+    // Relation { ( and | or | xor ) Relation }
+    std::vector<std::shared_ptr<Node>> relations;
+    Expression(const std::vector<std::shared_ptr<Node>>& relationsList) : relations(relationsList) {}
 
-    virtual std::string ToString(int counter) const override = 0;
+    std::string ToString(int count) const override {
+        std::string ots(count * 2, ' '); // Отступы с учетом уровня вложенности
+        std::string result = ots + "Expression:\n";
 
-    virtual void Print() const {
-        std::cout << "Expression: " << ToString(0) << std::endl;
+        for (const auto& relation : relations) {
+            result += relation->ToString(count + 1) + " ";
+        }
+
+        // Удаление лишнего пробела в конце строки, если есть элементы
+        if (!relations.empty()) {
+            result.pop_back();
+        }
+
+        return result;
     }
 };
 

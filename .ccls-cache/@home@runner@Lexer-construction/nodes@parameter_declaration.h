@@ -3,34 +3,26 @@
 
 #include "identifier.h"
 #include "node.h"
-#include "type.h"
 #include <memory>
 
 class ParameterDeclaration : public Node {
-  public:
-    ParameterDeclaration(std::shared_ptr<Identifier> identifier,
-                         std::shared_ptr<Type> type)
+public:
+    std::shared_ptr<Node> identifier;
+    std::shared_ptr<Node> type;
+
+    ParameterDeclaration(std::shared_ptr<Node> identifier,
+                         std::shared_ptr<Node> type)
         : identifier(identifier), type(type) {}
 
     std::string ToString(int counter) const override {
-        std::string result = "";
-        for (int i = 0; i < counter; i++) {
-            result += " ";
-        }
-        result += "Parameter: " + identifier->ToString(counter) + "\n";
-        for (int i = 0; i < counter + 2; i++) {
-            result += " ";
-        }
-        return result += "Type: " + type->ToString(counter) + "\n";
-    }
+        std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
+        std::string result = ots + "ParameterDeclaration:\n";
 
-    void Print() const {
-        std::cout << "ParameterDeclaration: " << ToString(2) << std::endl;
-    }
+        result += std::string(counter * 2 + 2, ' ') + "Parameter:\n" + identifier->ToString(counter + 1);
+        result += std::string(counter * 2 + 4, ' ') + type->ToString(counter + 1);
 
-  private:
-    std::shared_ptr<Identifier> identifier;
-    std::shared_ptr<Type> type;
+        return result;
+    }
 };
 
 #endif // PARAMETERDECLARATION_H

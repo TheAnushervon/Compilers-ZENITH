@@ -5,17 +5,17 @@
 #include "node.h"
 
 class PrimitiveType : public Node {
-  public:
-  // int, real, bool
-  std::string name;
-  PrimitiveType(const std::string& typeName) : name(typeName) {}
+public:
+    // int, real, bool
+    std::string name;
 
-std::string ToString(int counter) const override {
-  std::string result = "PrimitiveType: " + name;
-  return result; 
-}
+    PrimitiveType(const std::string& typeName) : name(typeName) {}
 
+    std::string ToString(int counter) const override {
+        std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
+        std::string result = ots + "PrimitiveType:\n" + ots + "  " + name;
+        return result + '\n';
+    }
 };
-
 
 #endif // PRIMITIVETYPE_H

@@ -22,16 +22,16 @@ public:
     }
 
     std::string ToString(int counter) const override {
-        std::string indent(counter, ' ');
-        std::string result = indent + "ForLoop: ";
+        std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
+        std::string result = ots + "ForLoop:\n";
 
         if (isReverse) {
-            result += "(reverse) ";
+            result += ots + "  (reverse)\n";
         }
 
-        result += identifier->ToString(counter) + "\n";
-        result += range->ToString(counter) + "\n";
-        result += body->ToString(counter);
+        result += ots + "  Identifier:\n" + identifier->ToString(counter + 2) + "\n";
+        result += ots + "  Range:\n" + range->ToString(counter + 2) + "\n";
+        result += ots + "  Body:\n" + body->ToString(counter + 2);
 
         return result;
     }

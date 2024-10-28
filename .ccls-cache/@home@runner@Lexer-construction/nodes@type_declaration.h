@@ -2,22 +2,22 @@
 #define TYPEDECLARATION_H
 
 #include <memory>
-#include "simple_declaration.h"
-#include "identifier.h"
-#include "type.h"
+#include "node.h"
 
-class TypeDeclaration : public SimpleDeclaration {
+class TypeDeclaration : public Node {
 public:
-    TypeDeclaration(std::shared_ptr<Identifier> identifier, std::shared_ptr<Type> type)
+    std::shared_ptr<Node> identifier;
+    std::shared_ptr<Node> type;
+
+    TypeDeclaration(std::shared_ptr<Node> identifier, std::shared_ptr<Node> type)
         : identifier(identifier), type(type) {}
 
     std::string ToString(int counter) const override {
-        return "type " + identifier->ToString(2) + " is " + type->ToString(2);
+        std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
+        return ots + "TypeDeclaration:\n" +
+               identifier->ToString(counter + 1) + 
+               type->ToString(counter + 1);
     }
-
-private:
-    std::shared_ptr<Identifier> identifier;
-    std::shared_ptr<Type> type;
 };
 
 #endif // TYPEDECLARATION_H

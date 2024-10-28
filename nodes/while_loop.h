@@ -5,16 +5,19 @@
 #include <memory>
 
 class WhileLoop : public Node {
-  public:
- //while Expression loop Body end
-  std::shared_ptr<Node> expression;
-  std::shared_ptr<Node> body;
+public:
+    // while Expression loop Body end
+    std::shared_ptr<Node> expression;
+    std::shared_ptr<Node> body;
 
-  WhileLoop(std::shared_ptr<Node> expr, std::shared_ptr<Node> bodyNode)
-  : expression(expr), body(bodyNode) {}
+    WhileLoop(std::shared_ptr<Node> expr, std::shared_ptr<Node> bodyNode)
+        : expression(expr), body(bodyNode) {}
 
     std::string ToString(int counter) const override {
-        std::string result = "WhileLoop: " +expression->ToString(counter) + " " + body->ToString(counter);
+        std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
+        std::string result = ots + "WhileLoop:\n" + 
+                             ots + "  Expression:\n" + expression->ToString(counter + 1) + "\n" + 
+                             ots + "  Body:\n" + body->ToString(counter + 1);
         return result;
     }
 };

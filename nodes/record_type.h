@@ -13,13 +13,15 @@ public:
         : members(members) {}
 
     std::string ToString(int counter) const override {
-        std::string result = "RecordType: ";
+        std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
+        std::string result = ots + "RecordType:\n";
+
         for (const auto& member : members) {
-            result += member->ToString(counter) + "\n";
+            result += member->ToString(counter + 1) + "\n";
         }
+
         return result;
     }
 };
-
 
 #endif // RECORDTYPE_H

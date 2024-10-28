@@ -1,59 +1,44 @@
 #ifndef ROUTINEDECLARATION_H
 #define ROUTINEDECLARATION_H
 
-#include <vector>
 #include <memory>
+#include <vector>
 #include "node.h"
-#include "identifier.h"
-#include "type.h"
-#include "parameter_declaration.h"
-#include "statement.h"
-#include "body_declaration.h"
 
 class RoutineDeclaration : public Node {
 public:
-RoutineDeclaration(std::shared_ptr<Identifier> routineName,
-               const std::vector<std::shared_ptr<ParameterDeclaration>>& parameters,
-               std::shared_ptr<Type> returnType = nullptr,
-               std::shared_ptr<Body> body = nullptr)
-: routineName(routineName), parameters(parameters), returnType(returnType), body(body) {}
+    std::shared_ptr<Node> identifier;
+    std::shared_ptr<Node> parameters;
+    std::shared_ptr<Node> returnType;  
+    std::shared_ptr<Node> body;
+
+    RoutineDeclaration(std::shared_ptr<Node> identifier, 
+                       std::shared_ptr<Node> parameters, 
+                       std::shared_ptr<Node> returnType = nullptr, 
+                       std::shared_ptr<Node> body = nullptr)
+        : identifier(identifier), parameters(parameters), returnType(returnType), body(body) {}
 
     std::string ToString(int counter) const override {
-        std::string result = "";
-        for (int i = 0; i < counter; i++){
-            result += " ";
-        }
-        result += "Routine: " + routineName->ToString(counter) + "\n";
+        std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
+        std::string result = ots + "RoutineDeclaration:\n";
+
+        result += identifier->ToString(counter + 1) + "\n";
+        result += parameters->ToString(counter + 1) + "\n";
 
         if (returnType) {
-            for (int i = 0; i < counter + 2; i++){
-                result += " ";
-            }
-            result += "Type: " + returnType->ToString(counter) + "\n";
+            result += returnType->ToString(counter + 1) + "\n";
+        } else {
+            result += ots + "  void\n";
         }
-
-        
-        for (size_t i = 0; i < parameters.size(); ++i) {
-            result+= parameters[i]->ToString(counter + 2);            
-        }
-        
 
         if (body) {
-            result += body->ToString(counter + 2);
+            result += body->ToString(counter + 1);
+        } else {
+            result += ots + "  No body\n";
         }
 
         return result;
     }
-
-    void Print() const {
-        std::cout << "RoutineDeclaration: " << ToString(0) << std::endl;
-    }
-
-private:
-    std::shared_ptr<Identifier> routineName;
-    std::vector<std::shared_ptr<ParameterDeclaration>> parameters;
-    std::shared_ptr<Type> returnType;
-    std::shared_ptr<Body> body; 
 };
 
 #endif // ROUTINEDECLARATION_H
