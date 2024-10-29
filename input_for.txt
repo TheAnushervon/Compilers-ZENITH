@@ -1,21 +1,23 @@
-routine CheckAndPrintSolution(a: real, b: real, a: real) is
+routine CheckAndPrintSolution(a: real, b: real) : real is
+
+
+     var new_a: real is 3.0
+      return new_a
+
     if a[0] /= 0.0 then
         var solution: real is 5
     else
         var new_a: real is 3.0
     end
-    while i < 10 loop
-        var i: real is 1
-    end
-    return b
+
+
+
 end
 
 
 var a: integer is 5
 
-var a: integer is 6
 
-var i: integer is 5 + 9 
 
 
 
