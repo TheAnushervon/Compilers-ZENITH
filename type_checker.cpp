@@ -51,9 +51,7 @@ public:
                     auto returnType = dynamic_cast<Type*>(routineDecl->returnType.get());
                     std::string typeName;
                     if (returnType == nullptr) typeName = "void";
-                    if (auto pT = dynamic_cast<PrimitiveType*>(returnType->child.get())) {
-                        typeName = pT->name;
-                    }
+
                     auto body = dynamic_cast<Body*>(routineDecl->body.get());
                     if (body->returnType) {
                         auto declaredReturnType = dynamic_cast<ReturnType*>(body->returnType.get());
@@ -108,23 +106,25 @@ public:
     void OptimizeAST(const std::unique_ptr<Node>& root) {
         if (auto program = dynamic_cast<Program*>(root.get())) {
             std::queue<Node*> queue;
-
             queue.push(program);
+
 
             while (!queue.empty()) {
                 Node* current = queue.front();
                 queue.pop();
 
                 if (auto prog = dynamic_cast<Program*>(current)) {
-                    for (const auto& decl : prog->simpleDeclarations) queue.push(decl.get());
                     for (const auto& routine : prog->routineDeclarations) queue.push(routine.get());
                 }
                 else if (auto routineDecl = dynamic_cast<RoutineDeclaration*>(current)) {
-                    queue.push(routineDecl->body.get());
                     auto body = dynamic_cast<Body*>(routineDecl->body.get());
-                    int amount = body->statements.size();
-                    int oderOfReturn = body->returnTypeIndex;
-                    if (amount > oderOfReturn) {
+                    int amount = static_cast<int>(body->statements.size());
+                    int oderOfReturn;
+
+                    if (body->returnType) {
+                        oderOfReturn = body->returnTypeIndex;
+                    }
+                    if (body->returnType && static_cast<int>(amount) > oderOfReturn) {
                         auto name = dynamic_cast<Identifier*>(routineDecl->identifier.get())->name;
                         std::cout << "Warning:\nIn the routine '" << name<< " ' exists unreachable code and will be removed at compile time";
                         int am = static_cast<int>(amount) - oderOfReturn;
@@ -133,8 +133,6 @@ public:
                             am--;
                         }
                     }
-
-
 
                 }
 
