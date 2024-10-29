@@ -6,6 +6,9 @@
 #include <cctype>
 #include <fstream>
 #include <vector>
+#include <fstream>
+#include <string> 
+#include <iostream> 
 
 namespace nh = nlohmann;
 
@@ -144,9 +147,23 @@ int main() {
     SyntaxAnalyzer syntaxAnalyzer(output);
     const std::unique_ptr<Node> ast = syntaxAnalyzer.Analyze();
     std::cout << ast->ToString(2) << std::endl;
+    std:: ofstream astFile("ast_before_optimization.txt"); 
+    if (astFile.is_open()) {
+        astFile << "Not Optimized AST:\n\n"; 
+        astFile << ast->ToString(2); 
+        astFile.close(); 
+    }
+
+
     auto *tc = new TypeChecker();
     tc->GlobalAndRoutineScopeTypeCheck(ast);
     tc->OptimizeAST(ast);
     std::cout << ast->ToString(2) << std::endl;
+    std ::ofstream astOptmized("ast_after_optimization.txt"); 
+    if (astOptmized.is_open()){
+        astOptmized<<"Optmized AST:\n\n"; 
+        astOptmized<<ast->ToString(2); 
+        astOptmized.close(); 
+    }
 
 }

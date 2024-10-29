@@ -1,0 +1,29 @@
+Optmized AST:
+
+Program:
+    RoutineDeclaration:
+        Identifier:
+          CheckAndPrintSolution
+
+        Parameters:
+            ParameterDeclaration:
+              Parameter:
+                Identifier:
+                  a
+                                Type:
+                    PrimitiveType:
+                      real
+            ParameterDeclaration:
+              Parameter:
+                Identifier:
+                  b
+                                Type:
+                    PrimitiveType:
+                      rea
+
+    Expected return type:         Type:
+            PrimitiveType:
+              real
+
+        Body:
+

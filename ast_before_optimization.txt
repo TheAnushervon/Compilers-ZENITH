@@ -1,0 +1,108 @@
+Not Optimized AST:
+
+Program:
+    RoutineDeclaration:
+        Identifier:
+          CheckAndPrintSolution
+
+        Parameters:
+            ParameterDeclaration:
+              Parameter:
+                Identifier:
+                  a
+                                Type:
+                    PrimitiveType:
+                      real
+            ParameterDeclaration:
+              Parameter:
+                Identifier:
+                  b
+                                Type:
+                    PrimitiveType:
+                      rea
+
+    Expected return type:         Type:
+            PrimitiveType:
+              real
+
+        Body:
+            SimpleDeclaration:
+                VariableDeclaration:
+                    Identifier:
+                      new_a
+                    Type:
+                        PrimitiveType:
+                          real
+                    Expression:
+                        Relation:
+                            Simple:
+                                Factor:
+                                    Summand:
+                                        Primary:
+                                            Real: 3.000000
+
+ 
+            Statement:
+                            IfStatement:
+                  Expression:
+                      Relation:
+                          Simple:
+                              Factor:
+                                  Summand:
+                                      Primary:
+                                          ModifiablePrimary:
+                                              Identifier:
+                                                a
+
+                                              Expression:
+                                                  Relation:
+                                                      Simple:
+                                                          Factor:
+                                                              Summand:
+                                                                  Primary:
+                                                                      Integer: 0
+
+ 
+
+                           Simple:
+                              Factor:
+                                  Summand:
+                                      Primary:
+                                          Real: 0.000000
+
+                   Body:
+                      SimpleDeclaration:
+                          VariableDeclaration:
+                              Identifier:
+                                solution
+                              Type:
+                                  PrimitiveType:
+                                    real
+                              Expression:
+                                  Relation:
+                                      Simple:
+                                          Factor:
+                                              Summand:
+                                                  Primary:
+                                                      Integer: 5
+
+ 
+                  Body:
+                      SimpleDeclaration:
+                          VariableDeclaration:
+                              Identifier:
+                                new_a
+                              Type:
+                                  PrimitiveType:
+                                    real
+                              Expression:
+                                  Relation:
+                                      Simple:
+                                          Factor:
+                                              Summand:
+                                                  Primary:
+                                                      Real: 3.000000
+
+ 
+
+
