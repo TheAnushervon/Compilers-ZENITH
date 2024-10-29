@@ -347,7 +347,6 @@ std::string toStrin(TokenType token) {
              
             return nullptr;
         }
-        std::cout << " kek\n";
 
 
 
