@@ -141,62 +141,304 @@ public:
 
             ///check if variables are declared, but not used
             if (auto prog = dynamic_cast<Program*>(root.get())) {
+
                for (const auto& routine : prog->routineDeclarations) {
                     std::queue<Node*> q;
-                    std::set<std::string> declaredVariables;
-                    std::set<std::string> modifiedVariables;
-                    queue.push(routine.get());
-                    while (!queue.empty()) {
-                        auto curr = queue.front();
-                        queue.pop();
-                        //returnType / Body
-                        if (auto routuneDecl = dynamic_cast<RoutineDeclaration*>(curr)) {
-                                if (routuneDecl->returnType) {
-                                    auto var = dynamic_cast<ModifiablePrimary*>(routuneDecl->returnType.get());
-                                    if (auto primVar = dynamic_cast<Identifier*>(var->identifier.get())) {
-                                        modifiedVariables.insert(primVar->name);
+                    q.push(routine.get());
+                   std::set<std::string> willBeRemoved;
+                    while (!q.empty()) {
+                        std::set<std::string> declaredVariables;
+                        std::set<std::string> modifiedVariables;
+                        auto curr = q.front();
+                        q.pop();
+
+                        //thenBody, elseBody
+                        if (auto st = dynamic_cast<Statement*>(curr)){
+
+                            if (auto whileDecl =  dynamic_cast<WhileLoop*>(st->child.get())) {
+                                auto whileBody = dynamic_cast<Body*>(whileDecl->body.get());
+                                for (const auto &item : whileBody->statements) {
+                                    if (auto sd = dynamic_cast<SimpleDeclaration*>(item.get())) {
+
+                                        auto v = dynamic_cast<VariableDeclaration*>(sd->child.get());
+
+                                        auto name = dynamic_cast<Identifier*>(v->identifier.get())->name;
+                                        declaredVariables.insert(name);
+                                    }
+                                    if (auto st = dynamic_cast<Statement*>(item.get())) {
+                                        if (auto assig = dynamic_cast<Assignment*>(st->child.get())) {
+                                            auto v = dynamic_cast<ModifiablePrimary*>(assig->modifiablePrimary.get());
+                                            auto name = dynamic_cast<Identifier*>(v->identifier.get())->name;
+                                            modifiedVariables.insert(name);
+                                        } else {
+                                            q.push(st->child.get());
+                                        }
                                     }
 
                                 }
-                                if (routuneDecl->body) {
+                                for (const auto& vd: declaredVariables) {
+                                    if (modifiedVariables.count(vd) == 0) {
+                                        std:: cout << "Warning:\nThe variable '" << vd << "' is declared but not used\n";
+                                        willBeRemoved.insert(vd);
+                                    }
+                                }
 
-                                        auto bodyDecl = dynamic_cast<Body*>(routuneDecl->body.get());
-                                        for (const auto &item : bodyDecl->statements) {
-                                            if (auto sd = dynamic_cast<SimpleDeclaration*>(item.get())) {
+                                for (const auto& vd: modifiedVariables) {
+                                    if (declaredVariables.count(vd) == 0) {
+                                        std:: cerr << "Error:\nThe variable '" << vd << "' is not declared in the scope\n";
 
-                                                auto v = dynamic_cast<VariableDeclaration*>(sd->child.get());
+                                    }
+                                }
+                                int index = 0;
+                                int amount =static_cast<int>(willBeRemoved.size());
+                                while (amount > 0) {
+                                    const auto& item = whileBody->statements[index];
+                                    if (auto sd = dynamic_cast<SimpleDeclaration*>(item.get())) {
 
-                                                   auto name = dynamic_cast<Identifier*>(v->identifier.get())->name;
-                                                    declaredVariables.insert(name);
-                                          }
-                                            if (auto st = dynamic_cast<Statement*>(item.get())) {
-                                                if (auto assig = dynamic_cast<Assignment*>(st->child.get())) {
-                                                    auto v = dynamic_cast<ModifiablePrimary*>(assig->modifiablePrimary.get());
-                                                    auto name = dynamic_cast<Identifier*>(v->identifier.get())->name;
-                                                    modifiedVariables.insert(name);
-                                                } //else {
-                                                   // q.push(st->child.get());
-                                                //}
+                                        auto v = dynamic_cast<VariableDeclaration*>(sd->child.get());
+
+                                        auto name = dynamic_cast<Identifier*>(v->identifier.get())->name;
+                                        if (willBeRemoved.count(name) != 0) {
+                                            whileBody->statements.erase(whileBody->statements.begin()+index);
+                                            index--;
+                                            amount--;
+                                        }
+                                    }
+                                    if (auto st = dynamic_cast<Statement*>(item.get())) {
+                                        if (auto assig = dynamic_cast<Assignment*>(st->child.get())) {
+                                            auto v = dynamic_cast<ModifiablePrimary*>(assig->modifiablePrimary.get());
+                                            auto name = dynamic_cast<Identifier*>(v->identifier.get())->name;
+                                            if (willBeRemoved.count(name) != 0) {
+                                                whileBody->statements.erase(whileBody->statements.begin()+index);
+                                                index--;
+                                                amount--;
                                             }
-                                       }
-                               }
-                        }
+                                        }
+                                    }
+                                    index++;
 
+                                }
+                            }
 
-                        std::set<std::string> willBeRemoved;
-                        for (const auto& vd: declaredVariables) {
-                                     if (modifiedVariables.count(vd) == 0) {
+                            if (auto ifDecl =  dynamic_cast<IfStatement*>(st->child.get())) {
+                                willBeRemoved.clear();
+                                auto thenBody = dynamic_cast<Body*>(ifDecl->thenBody.get());
+                                for (const auto &item : thenBody->statements) {
+                                    if (auto sd = dynamic_cast<SimpleDeclaration*>(item.get())) {
+
+                                        auto v = dynamic_cast<VariableDeclaration*>(sd->child.get());
+
+                                        auto name = dynamic_cast<Identifier*>(v->identifier.get())->name;
+                                        declaredVariables.insert(name);
+                                    }
+                                    if (auto st = dynamic_cast<Statement*>(item.get())) {
+                                        if (auto assig = dynamic_cast<Assignment*>(st->child.get())) {
+                                            auto v = dynamic_cast<ModifiablePrimary*>(assig->modifiablePrimary.get());
+                                            auto name = dynamic_cast<Identifier*>(v->identifier.get())->name;
+                                            modifiedVariables.insert(name);
+                                        } else {
+                                            q.push(st->child.get());
+                                        }
+                                    }
+
+                                }
+                                for (const auto& vd: declaredVariables) {
+                                    if (modifiedVariables.count(vd) == 0) {
+                                        std:: cout << "Warning:\nThe variable '" << vd << "' is declared but not used\n";
+                                        willBeRemoved.insert(vd);
+                                    }
+                                }
+                                for (const auto& vd: modifiedVariables) {
+                                    if (declaredVariables.count(vd) == 0) {
+                                        std:: cerr << "Error:\nThe variable '" << vd << "' is not declared in the scope\n";
+
+                                    }
+                                }
+                                int index = 0;
+                                int amount =static_cast<int>(willBeRemoved.size());
+                                while (amount > 0) {
+                                    const auto& item = thenBody->statements[index];
+                                    if (auto sd = dynamic_cast<SimpleDeclaration*>(item.get())) {
+
+                                        auto v = dynamic_cast<VariableDeclaration*>(sd->child.get());
+
+                                        auto name = dynamic_cast<Identifier*>(v->identifier.get())->name;
+                                        if (willBeRemoved.count(name) != 0) {
+                                            thenBody->statements.erase(thenBody->statements.begin()+index);
+                                            index--;
+                                            amount--;
+                                        }
+                                    }
+                                    if (auto st = dynamic_cast<Statement*>(item.get())) {
+                                        if (auto assig = dynamic_cast<Assignment*>(st->child.get())) {
+                                            auto v = dynamic_cast<ModifiablePrimary*>(assig->modifiablePrimary.get());
+                                            auto name = dynamic_cast<Identifier*>(v->identifier.get())->name;
+                                            if (willBeRemoved.count(name) != 0) {
+                                                thenBody->statements.erase(thenBody->statements.begin()+index);
+                                                index--;
+                                                amount--;
+                                            }
+                                        }
+                                    }
+                                    index++;
+
+                                }
+                                if (auto elseBody = dynamic_cast<Body*>(ifDecl->elseBody.get())) {
+                                    declaredVariables.clear();
+                                    modifiedVariables.clear();
+                                    willBeRemoved.clear();
+                                    for (const auto &item : elseBody->statements) {
+                                        if (auto sd = dynamic_cast<SimpleDeclaration*>(item.get())) {
+
+                                            auto v = dynamic_cast<VariableDeclaration*>(sd->child.get());
+
+                                            auto name = dynamic_cast<Identifier*>(v->identifier.get())->name;
+
+                                            declaredVariables.insert(name);
+                                        }
+                                        if (auto st = dynamic_cast<Statement*>(item.get())) {
+                                            if (auto assig = dynamic_cast<Assignment*>(st->child.get())) {
+                                                auto v = dynamic_cast<ModifiablePrimary*>(assig->modifiablePrimary.get());
+                                                auto name = dynamic_cast<Identifier*>(v->identifier.get())->name;
+                                                modifiedVariables.insert(name);
+
+                                            } else {
+                                                q.push(st->child.get());
+                                            }
+                                        }
+                                    }
+                                    for (const auto& vd: declaredVariables) {
+                                        if (modifiedVariables.count(vd) == 0) {
                                             std:: cout << "Warning:\nThe variable '" << vd << "' is declared but not used\n";
                                             willBeRemoved.insert(vd);
-                                     }
+                                        }
+                                    }
+                                    for (const auto& vd: modifiedVariables) {
+                                        if (declaredVariables.count(vd) == 0) {
+                                            std:: cerr << "Error:\nThe variable '" << vd << "' is not declared in the scope\n";
+
+                                        }
+                                    }
+                                    index = 0;
+                                    amount =static_cast<int>(willBeRemoved.size());
+
+                                    while (amount > 0) {
+
+                                        const auto& item = elseBody->statements[index];
+                                        if (auto sd = dynamic_cast<SimpleDeclaration*>(item.get())) {
+
+                                            auto v = dynamic_cast<VariableDeclaration*>(sd->child.get());
+
+                                            auto name = dynamic_cast<Identifier*>(v->identifier.get())->name;
+                                            if (willBeRemoved.count(name) != 0) {
+                                                elseBody->statements.erase(elseBody->statements.begin()+index);
+                                                index--;
+                                                amount--;
+                                            }
+                                        }
+                                        if (auto st = dynamic_cast<Statement*>(item.get())) {
+                                            if (auto assig = dynamic_cast<Assignment*>(st->child.get())) {
+                                                auto v = dynamic_cast<ModifiablePrimary*>(assig->modifiablePrimary.get());
+                                                auto name = dynamic_cast<Identifier*>(v->identifier.get())->name;
+                                                if (willBeRemoved.count(name) != 0) {
+                                                    elseBody->statements.erase(elseBody->statements.begin()+index);
+                                                    index--;
+                                                    amount--;
+                                                }
+                                            }
+                                        }
+                                        index++;
+
+                                    }
+
+
+                                }
+
+                            }
+
                         }
-                            modifiedVariables.erase(declaredVariables.begin(), declaredVariables.end());
-                            declaredVariables.erase(modifiedVariables.begin(), modifiedVariables.end());
+                        //returnType / Body
+                        else if (auto routuneDecl = dynamic_cast<RoutineDeclaration*>(curr)) {
+                            declaredVariables.clear();
+                            modifiedVariables.clear();
+                            if (routuneDecl->returnType) {
+                                auto var = dynamic_cast<ModifiablePrimary*>(routuneDecl->returnType.get());
+                                if (auto primVar = dynamic_cast<Identifier*>(var->identifier.get())) {
+                                    modifiedVariables.insert(primVar->name);
+                                }
+
+                            }
+                            if (routuneDecl->body) {
+
+                                auto bodyDecl = dynamic_cast<Body*>(routuneDecl->body.get());
+                                for (const auto &item : bodyDecl->statements) {
+                                    if (auto sd = dynamic_cast<SimpleDeclaration*>(item.get())) {
+
+                                        auto v = dynamic_cast<VariableDeclaration*>(sd->child.get());
+
+                                        auto name = dynamic_cast<Identifier*>(v->identifier.get())->name;
+                                        declaredVariables.insert(name);
+                                    }
+                                    if (auto st = dynamic_cast<Statement*>(item.get())) {
+                                        if (auto assig = dynamic_cast<Assignment*>(st->child.get())) {
+                                            auto v = dynamic_cast<ModifiablePrimary*>(assig->modifiablePrimary.get());
+                                            auto name = dynamic_cast<Identifier*>(v->identifier.get())->name;
+                                            modifiedVariables.insert(name);
+                                        } else {
+                                            q.push(item.get());
+                                        }
+                                    }
+                                }
+                            for (const auto& vd: declaredVariables) {
+                                if (modifiedVariables.count(vd) == 0) {
+                                    std:: cout << "Warning:\nThe variable '" << vd << "' is declared but not used\n";
+                                    willBeRemoved.insert(vd);
+                                }
+                            }
+                                for (const auto& vd: modifiedVariables) {
+                                    if (declaredVariables.count(vd) == 0) {
+                                        std:: cerr << "Error:\nThe variable '" << vd << "' is not declared in the scope\n";
+
+                                    }
+                                }
+                                int index = 0;
+                                int amount =static_cast<int>(willBeRemoved.size());
+
+                                while (amount > 0) {
+                                    const auto& item = bodyDecl->statements[index];
+                                    if (auto sd = dynamic_cast<SimpleDeclaration*>(item.get())) {
+
+                                        auto v = dynamic_cast<VariableDeclaration*>(sd->child.get());
+
+                                        auto name = dynamic_cast<Identifier*>(v->identifier.get())->name;
+                                        if (willBeRemoved.count(name) != 0) {
+                                            bodyDecl->statements.erase(bodyDecl->statements.begin()+index);
+                                            index--;
+                                            amount--;
+                                        }
+                                    }
+                                    if (auto st = dynamic_cast<Statement*>(item.get())) {
+                                        if (auto assig = dynamic_cast<Assignment*>(st->child.get())) {
+                                            auto v = dynamic_cast<ModifiablePrimary*>(assig->modifiablePrimary.get());
+                                            auto name = dynamic_cast<Identifier*>(v->identifier.get())->name;
+                                            if (willBeRemoved.count(name) != 0) {
+                                                bodyDecl->statements.erase(bodyDecl->statements.begin()+index);
+                                                index--;
+                                                amount--;
+                                            }
+                                        }
+                                    }
+                                    index++;
+
+                                }
+                        }
+                        }
+                    }
                     }
 
         } } else {
             std::cerr << "Error: Provided node is not of type Program.\n";
         }
     }
-   }
+
 };
