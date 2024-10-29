@@ -3,19 +3,18 @@
 
 #include "../enums/token_type.h"
 #include "../structs/token.h"
-#include <iostream>
 #include <set>
 #include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
+#include <iostream>
 
 class Handler {
   public:
     static TokenType determine_tk(const std::string &tk);
     static std::vector<Token> parse_tokens(const std::string &fileContents);
     static bool check_for_range(const std::string &tk);
-    static bool check_for_record_dot(const std::string &tk);
 };
 
 inline bool Handler::check_for_range(const std::string &tk) {
@@ -24,19 +23,6 @@ inline bool Handler::check_for_range(const std::string &tk) {
         if (tk[i] == '.' && cnt == 0) {
             cnt++;
         } else if (tk[i] == '.' && cnt == 1) {
-            return true;
-        } else
-            cnt = 0;
-    }
-    return false;
-}
-
-inline bool Handler::check_for_record_dot(const std::string &tk) {
-    int cnt = 0;
-    for (int i = 0; i < tk.size(); i++) {
-        if (tk[i] == '.' && cnt == 0) {
-            cnt++;
-        } else if (tk[i] != '.' && cnt == 1) {
             return true;
         } else
             cnt = 0;
@@ -91,24 +77,6 @@ Handler::parse_tokens(const std::string &fileContents) {
                                 output.push_back(
                                     Token(TokenType::tk_range, ".."));
                             }
-                            substr = "";
-                        }
-                    }
-                    if (!substr.empty()) {
-                        auto t = Handler::determine_tk(substr);
-                        output.push_back(Token(t, substr));
-                    }
-                    potential = "";
-                }
-                else if (check_for_record_dot(potential)) {
-                    std::string substr = "";
-                    for (int j = 0; j < potential.size(); j++) {
-                        if (potential[j] != '.')
-                            substr += potential[j];
-                        else {
-                            auto t = Handler::determine_tk(substr);
-                            output.push_back(Token(t, substr));
-                            output.push_back(Token(TokenType::tk_dot, "."));
                             substr = "";
                         }
                     }
