@@ -45,7 +45,7 @@ public:
                     if (auto varDecl = dynamic_cast<VariableDeclaration*>(simpleDecl->child.get())) {
                         auto varName = dynamic_cast<Identifier*>(varDecl->identifier.get())->name;
                         if (!globals.insert(varName).second) {
-                            std::cerr << "Error: Global variable '" << varName << "' is redeclared.\n";
+                            std::cerr << "Error: Variable '" << varName << "' is redeclared.\n";
                         }
                     }
                 }
