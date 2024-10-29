@@ -51,6 +51,11 @@ public:
                     auto returnType = dynamic_cast<Type*>(routineDecl->returnType.get());
                     std::string typeName;
                     if (returnType == nullptr) typeName = "void";
+                    else {
+                        if (auto pt = dynamic_cast<PrimitiveType*>(returnType->child.get())) {
+                            typeName = pt->name;
+                        }
+                    }
 
                     auto body = dynamic_cast<Body*>(routineDecl->body.get());
                     if (body->returnType) {
@@ -222,6 +227,8 @@ public:
 
                             if (auto ifDecl =  dynamic_cast<IfStatement*>(st->child.get())) {
                                 willBeRemoved.clear();
+                                declaredVariables.clear();
+                                modifiedVariables.clear();
                                 auto thenBody = dynamic_cast<Body*>(ifDecl->thenBody.get());
                                 for (const auto &item : thenBody->statements) {
                                     if (auto sd = dynamic_cast<SimpleDeclaration*>(item.get())) {
@@ -361,13 +368,16 @@ public:
                         else if (auto routuneDecl = dynamic_cast<RoutineDeclaration*>(curr)) {
                             declaredVariables.clear();
                             modifiedVariables.clear();
-                            if (routuneDecl->returnType) {
-                                auto var = dynamic_cast<ModifiablePrimary*>(routuneDecl->returnType.get());
-                                if (auto primVar = dynamic_cast<Identifier*>(var->identifier.get())) {
-                                    modifiedVariables.insert(primVar->name);
-                                }
+                            willBeRemoved.clear();
 
+                            if (routuneDecl->returnType) {
+                                if (auto var = dynamic_cast<ModifiablePrimary*>(routuneDecl->returnType.get())) {
+                                    if (auto primVar = dynamic_cast<Identifier*>(var->identifier.get())) {
+                                        modifiedVariables.insert(primVar->name);
+                                    }
+                                }
                             }
+
                             if (routuneDecl->body) {
 
                                 auto bodyDecl = dynamic_cast<Body*>(routuneDecl->body.get());
@@ -401,6 +411,7 @@ public:
 
                                     }
                                 }
+
                                 int index = 0;
                                 int amount =static_cast<int>(willBeRemoved.size());
 
