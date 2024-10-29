@@ -107,7 +107,7 @@ std::string toString(TokenType token) {
         return "tk_identifier";
     case TokenType::tk_terminate:
         return "tk_terminate";
-        case TokenType::tk_return:
+    case TokenType::tk_return:
         return "tk_return";
     default:
         return "Unknown token";
@@ -148,5 +148,4 @@ int main() {
     tc->GlobalAndRoutineScopeTypeCheck(ast);
     tc->OptimizeAST(ast);
     std::cout << ast->ToString(2) << std::endl;
-
 }
