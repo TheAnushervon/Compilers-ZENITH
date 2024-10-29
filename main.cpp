@@ -2,6 +2,7 @@
 #include "syntax_analyzer.cpp"
 #include "tokens/enums/token_type.h"
 #include "tokens/pars/pars_functions.h"
+#include "type_checker.cpp"
 #include <cctype>
 #include <fstream>
 #include <vector>
@@ -141,6 +142,10 @@ int main() {
     output_file.close();
 
     SyntaxAnalyzer syntaxAnalyzer(output);
-    std::unique_ptr<Program> ast = syntaxAnalyzer.Analyze();
+    const std::unique_ptr<Node> ast = syntaxAnalyzer.Analyze();
+    std::cout << ast->ToString(2) << std::endl;
+    auto *tc = new TypeChecker();
+    tc->GlobalAndRoutineScopeTypeCheck(ast);
+    tc->OptimizeAST(ast);
     std::cout << ast->ToString(2) << std::endl;
 }

@@ -340,12 +340,16 @@ std::string toStrin(TokenType token) {
             return nullptr;
         }
         AdvanceToken();
-           
+
+
         auto body = ParseBody();
         if (!body) {
              
             return nullptr;
         }
+        std::cout << " kek\n";
+
+
 
         if (GetCurrentToken().type != TokenType::tk_end) {
              
@@ -528,14 +532,18 @@ std::string toStrin(TokenType token) {
        
 
         std::vector<std::shared_ptr<Node>> bodyNodes;
+        std::shared_ptr<Node> returnType;
+        int index;
 
 
         while (true) {
             std::shared_ptr<Node> childNode;
             if (GetCurrentToken().type == TokenType::tk_return){
-                childNode = ParseReturnType();
+                returnType =  ParseReturnType();
+                index = bodyNodes.size();
+                continue;
             }
-            else if (GetCurrentToken().type == TokenType::tk_var || GetCurrentToken().type ==  TokenType::tk_identifier ||GetCurrentToken().type ==TokenType::tk_type) {
+            else if (GetCurrentToken().type == TokenType::tk_var  ||GetCurrentToken().type ==TokenType::tk_type) {
             childNode = ParseSimpleDeclaration();
             }
             else if (!childNode) {
@@ -553,8 +561,10 @@ std::string toStrin(TokenType token) {
              
             return nullptr;
         }
-
-        return std::make_shared<Body>(bodyNodes);
+        auto body = std::make_shared<Body>(bodyNodes);
+        body->returnType = returnType;
+        body->returnTypeIndex = index;
+        return body;
     }
 
     // new_version
