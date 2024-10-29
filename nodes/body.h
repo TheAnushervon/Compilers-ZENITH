@@ -9,9 +9,10 @@ class Body : public Node {
 public:
     std::vector<std::shared_ptr<Node>> statements;
     std::shared_ptr<Node> returnType;
+    int returnTypeIndex;
 
     Body(const std::vector<std::shared_ptr<Node>>& statements)
-        : statements(statements), returnType(nullptr) {}
+        : statements(statements), returnType(nullptr), returnTypeIndex(-1) {}
 
     std::string ToString(int counter) const override {
         std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности

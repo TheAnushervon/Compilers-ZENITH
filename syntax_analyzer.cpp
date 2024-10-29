@@ -341,11 +341,14 @@ class SyntaxAnalyzer {
         }
         AdvanceToken();
 
+
         auto body = ParseBody();
         if (!body) {
 
             return nullptr;
         }
+
+
 
         if (GetCurrentToken().type != TokenType::tk_end) {
 
@@ -527,15 +530,21 @@ class SyntaxAnalyzer {
     std::shared_ptr<Node> ParseBody() {
 
         std::vector<std::shared_ptr<Node>> bodyNodes;
+        std::shared_ptr<Node> returnType;
+        int index;
+
 
         while (true) {
             std::shared_ptr<Node> childNode;
-            if (GetCurrentToken().type == TokenType::tk_return) {
-                childNode = ParseReturnType();
-            } else if (GetCurrentToken().type == TokenType::tk_var ||
-                       GetCurrentToken().type == TokenType::tk_type) {
-                childNode = ParseSimpleDeclaration();
-            } else if (!childNode) {
+            if (GetCurrentToken().type == TokenType::tk_return){
+                returnType =  ParseReturnType();
+                index = bodyNodes.size();
+                continue;
+            }
+            else if (GetCurrentToken().type == TokenType::tk_var  ||GetCurrentToken().type ==TokenType::tk_type) {
+            childNode = ParseSimpleDeclaration();
+            }
+            else if (!childNode) {
                 childNode = ParseStatement();
             }
 
@@ -550,8 +559,10 @@ class SyntaxAnalyzer {
 
             return nullptr;
         }
-
-        return std::make_shared<Body>(bodyNodes);
+        auto body = std::make_shared<Body>(bodyNodes);
+        body->returnType = returnType;
+        body->returnTypeIndex = index;
+        return body;
     }
 
     // new_version

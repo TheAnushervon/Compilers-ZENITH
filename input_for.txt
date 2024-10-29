@@ -1,10 +1,15 @@
-routine CheckAndPrintSolution(a: real, b: real) is
-        type Point is record
-            var x : integer
-            var y : integer
-        end
-        a.x := 3
+routine CheckAndPrintSolution(a: real, b: real) : real is
+     var new_a: real is 3.0
+      return new_a
+
+    if a[0] /= 0.0 then
+        var solution: real is 5
+    else
+        var new_a: real is 3.0
+    end
 end
+
+
 
 
 
