@@ -16,13 +16,16 @@ public:
         : ifExpression(expression), thenBody(thenBodyNode), elseBody(elseBodyNode) {}
 
     std::string ToString(int counter) const override {
+
         std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
         std::string result = ots + "IfStatement:\n";
         result += ifExpression->ToString(counter+2);
         
 
         result += thenBody->ToString(counter + 2);
+        if (thenBody->ToString(counter + 2) == "") return "";
         if (elseBody != nullptr) {
+            if (elseBody->ToString(counter + 2) == "") return "";
             result += elseBody->ToString(counter + 2);
         }
 

@@ -15,6 +15,9 @@ public:
         : statements(statements), returnType(nullptr), returnTypeIndex(-1) {}
 
     std::string ToString(int counter) const override {
+        if (statements.size() == 0) {
+            return "";
+        }
         std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
         std::string result = ots + "Body:\n";
 
