@@ -105,6 +105,7 @@ public:
 
     void OptimizeAST(const std::unique_ptr<Node>& root) {
         if (auto program = dynamic_cast<Program*>(root.get())) {
+            //check return
             std::queue<Node*> queue;
             queue.push(program);
 
@@ -126,7 +127,7 @@ public:
                     }
                     if (body->returnType && static_cast<int>(amount) > oderOfReturn) {
                         auto name = dynamic_cast<Identifier*>(routineDecl->identifier.get())->name;
-                        std::cout << "Warning:\nIn the routine '" << name<< " ' exists unreachable code and will be removed at compile time";
+                        std::cout << "Warning:\nIn the routine '" << name<< " ' exists unreachable code and will be removed at compile time\n";
                         int am = static_cast<int>(amount) - oderOfReturn;
                         while (am > 0) {
                            body->statements.erase(body->statements.begin() +oderOfReturn);
@@ -137,8 +138,65 @@ public:
                 }
 
             }
-        } else {
+
+            ///check if variables are declared, but not used
+            if (auto prog = dynamic_cast<Program*>(root.get())) {
+               for (const auto& routine : prog->routineDeclarations) {
+                    std::queue<Node*> q;
+                    std::set<std::string> declaredVariables;
+                    std::set<std::string> modifiedVariables;
+                    queue.push(routine.get());
+                    while (!queue.empty()) {
+                        auto curr = queue.front();
+                        queue.pop();
+                        //returnType / Body
+                        if (auto routuneDecl = dynamic_cast<RoutineDeclaration*>(curr)) {
+                                if (routuneDecl->returnType) {
+                                    auto var = dynamic_cast<ModifiablePrimary*>(routuneDecl->returnType.get());
+                                    if (auto primVar = dynamic_cast<Identifier*>(var->identifier.get())) {
+                                        modifiedVariables.insert(primVar->name);
+                                    }
+
+                                }
+                                if (routuneDecl->body) {
+
+                                        auto bodyDecl = dynamic_cast<Body*>(routuneDecl->body.get());
+                                        for (const auto &item : bodyDecl->statements) {
+                                            if (auto sd = dynamic_cast<SimpleDeclaration*>(item.get())) {
+
+                                                auto v = dynamic_cast<VariableDeclaration*>(sd->child.get());
+
+                                                   auto name = dynamic_cast<Identifier*>(v->identifier.get())->name;
+                                                    declaredVariables.insert(name);
+                                          }
+                                            if (auto st = dynamic_cast<Statement*>(item.get())) {
+                                                if (auto assig = dynamic_cast<Assignment*>(st->child.get())) {
+                                                    auto v = dynamic_cast<ModifiablePrimary*>(assig->modifiablePrimary.get());
+                                                    auto name = dynamic_cast<Identifier*>(v->identifier.get())->name;
+                                                    modifiedVariables.insert(name);
+                                                } //else {
+                                                   // q.push(st->child.get());
+                                                //}
+                                            }
+                                       }
+                               }
+                        }
+
+
+                        std::set<std::string> willBeRemoved;
+                        for (const auto& vd: declaredVariables) {
+                                     if (modifiedVariables.count(vd) == 0) {
+                                            std:: cout << "Warning:\nThe variable '" << vd << "' is declared but not used\n";
+                                            willBeRemoved.insert(vd);
+                                     }
+                        }
+                            modifiedVariables.erase(declaredVariables.begin(), declaredVariables.end());
+                            declaredVariables.erase(modifiedVariables.begin(), modifiedVariables.end());
+                    }
+
+        } } else {
             std::cerr << "Error: Provided node is not of type Program.\n";
         }
     }
+   }
 };
