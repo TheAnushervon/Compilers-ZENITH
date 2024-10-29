@@ -1,20 +1,25 @@
+#include "nodes/assignment.h"
+#include "nodes/body.h"
+#include "nodes/identifier.h"
+#include "nodes/if_statement.h"
+#include "nodes/modifiable_primary.h"
+#include "nodes/node.h"
+#include "nodes/parameter_declaration.h"
+#include "nodes/parametrs.h"
+#include "nodes/primitive_type.h"
+#include "nodes/program.h"
+#include "nodes/return_type.h"
+#include "nodes/routine_declaration.h"
+#include "nodes/simple_declaration.h"
+#include "nodes/statement.h"
+#include "nodes/type.h"
+#include "nodes/variable_declaration.h"
+#include "nodes/while_loop.h"
 #include <iostream>
+#include <memory>
 #include <queue>
 #include <set>
 #include <stack>
-#include <memory>
-#include "nodes/node.h"
-#include "nodes/body.h"
-#include "nodes/program.h"
-#include "nodes/simple_declaration.h"
-#include "nodes/variable_declaration.h"
-#include "nodes/routine_declaration.h"
-#include "nodes/identifier.h"
-#include "nodes/primitive_type.h"
-#include "nodes/parametrs.h"
-#include "nodes/parameter_declaration.h"
-#include "nodes/return_type.h"
-#include "nodes/modifiable_primary.h"
 
 class TypeChecker {
 public:
