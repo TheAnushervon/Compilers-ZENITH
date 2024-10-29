@@ -148,4 +148,5 @@ int main() {
     tc->GlobalAndRoutineScopeTypeCheck(ast);
     tc->OptimizeAST(ast);
     std::cout << ast->ToString(2) << std::endl;
+
 }

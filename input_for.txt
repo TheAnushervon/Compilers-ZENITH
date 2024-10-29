@@ -1,6 +1,4 @@
 routine CheckAndPrintSolution(a: real, b: real) : real is
-
-
      var new_a: real is 3.0
       return new_a
 
@@ -9,13 +7,8 @@ routine CheckAndPrintSolution(a: real, b: real) : real is
     else
         var new_a: real is 3.0
     end
-
-
-
 end
 
-
-var a: integer is 5
 
 
 
