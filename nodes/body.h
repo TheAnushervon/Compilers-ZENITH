@@ -19,9 +19,10 @@ public:
         std::string result = ots + "Body:\n";
 
         for (const auto& stmt : statements) {
-            result += stmt->ToString(counter + 2) + "\n";
+            if (stmt->ToString(counter + 2) =="") result += "";
+            else result += stmt->ToString(counter + 2) + "\n";
         }
-
+        if (result == "Body:\n") return "";
         return result;
     }
 };

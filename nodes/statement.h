@@ -17,6 +17,7 @@ public:
     std::string ToString(int count) const override {
         std::string ots(count * 2, ' '); // Отступы с учетом уровня вложенности
         std::string result = ots + "Statement:\n" + child->ToString(count + 1);
+        if (child->ToString(count + 1) == "") return "";
         return result;
     }
 };
