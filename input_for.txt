@@ -8,11 +8,3 @@ routine CheckAndPrintSolution(a: real, b: real) : real is
         var new_a: real is 3.0
     end
 end
-
-
-
-
-
-
-
-
