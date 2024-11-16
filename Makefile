@@ -1,16 +1,32 @@
-all: main
-
+# Компилятор
 CXX = clang++
-override CXXFLAGS += -g -Wall -Werror
 
-SRCS = $(shell find . -name '.ccls-cache' -type d -prune -o -type f -name '*.cpp' -print | sed -e 's/ /\\ /g')
-HEADERS = $(shell find . -name '.ccls-cache' -type d -prune -o -type f -name '*.h' -print)
+# Пути к заголовкам и библиотекам
+LLVM_INCLUDE = C:/LLVM/clang+llvm-19.1.0-x86_64-pc-windows-msvc/include
+LLVM_LIB = C:/LLVM/clang+llvm-19.1.0-x86_64-pc-windows-msvc/lib
 
-main: $(SRCS) $(HEADERS)
-	$(CXX) $(CXXFLAGS) $(SRCS) -o "$@"
+# Добавляем include paths для MinGW
+MINGW_INCLUDE = C:/MinGW/include
+MINGW_INCLUDE_CXX = C:/MinGW/lib/gcc/mingw32/8.1.0/include/c++
 
-main-debug: $(SRCS) $(HEADERS)
-	NIX_HARDENING_ENABLE= $(CXX) $(CXXFLAGS) -O0  $(SRCS) -o "$@"
+# Флаги компиляции
+CXXFLAGS = -std=c++17 -I$(LLVM_INCLUDE) -I$(MINGW_INCLUDE) -I$(MINGW_INCLUDE_CXX) -g -Wall -Werror -D_GLIBCXX_USE_CXX11_ABI=0
 
+# Флаги линковки
+LDFLAGS = -L$(LLVM_LIB) -lLLVMCore -lLLVMSupport -lLLVMIRReader -ladvapi32
+
+# Исходные файлы
+SRCS = main.cpp ir_generator.cpp
+
+# Целевой файл
+TARGET = main
+
+# Сборка
+all: $(TARGET)
+
+$(TARGET): $(SRCS)
+	$(CXX) $(CXXFLAGS) $(SRCS) $(LDFLAGS) -o $(TARGET)
+
+# Очистка
 clean:
-	rm -f main main-debug
+	rm -f $(TARGET)

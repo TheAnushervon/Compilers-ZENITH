@@ -1,4 +1,5 @@
 #include "json.hpp"
+#include "ir_generator.cpp"
 #include "syntax_analyzer.cpp"
 #include "tokens/enums/token_type.h"
 #include "tokens/pars/pars_functions.h"

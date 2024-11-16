@@ -212,7 +212,6 @@ inline TokenType Handler::determine_tk(const std::string &tk) {
         return TokenType::tk_newline;
 
     try {
-        stoi(tk);
         return TokenType::tk_num;
     } catch (std::invalid_argument) {
         return TokenType::tk_identifier;

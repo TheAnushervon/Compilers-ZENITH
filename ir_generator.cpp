@@ -4,6 +4,8 @@
 #include <llvm/IR/Verifier.h>
 #include <llvm/Support/raw_ostream.h>
 
+#include"nodes/node.h"
+
 class IRGenerator {
 public:
     llvm::LLVMContext context;         // Контекст для IR
@@ -13,7 +15,7 @@ public:
     IRGenerator() : builder(context) {
         module = std::make_unique<llvm::Module>("MyProgram", context);
     }
-
+/**
     void generateProgram(const Program* program) {
         for (const auto& routine : program->routineDeclarations) {
             generateRoutine(dynamic_cast<RoutineDeclaration*>(routine.get()));
@@ -76,5 +78,6 @@ public:
 
     void printIR() {
         module->print(llvm::outs(), nullptr);
-    }
+    }*/
+
 };
