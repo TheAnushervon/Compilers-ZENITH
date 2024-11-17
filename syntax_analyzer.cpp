@@ -39,11 +39,11 @@
 #include <algorithm>
 
 class SyntaxAnalyzer {
-  public:
+public:
     SyntaxAnalyzer(const std::vector<Token> &tokens)
         : tokens(tokens), currentIndex(0) {}
 
-    // new_version
+    // Функция для запуска анализа
     std::unique_ptr<Program> Analyze() {
         auto program = std::make_unique<Program>();
         bool flag_terminated = false;
@@ -53,14 +53,13 @@ class SyntaxAnalyzer {
                 break;
 
             const Token &token = GetCurrentToken();
-           // std::cout << "cur_token : " << toStrin(token.type) << std::endl;
 
             switch (token.type) {
             case TokenType::tk_routine: {
                 auto routine = ParseRoutineDeclaration();
                 if (!routine) {
-                    std::cerr
-                        << "Error: Failed to parse routine declaration.\n" << toStrin(GetCurrentToken().type);
+                    std::cerr << "Error: Failed to parse routine declaration.\n"
+                              << toString(GetCurrentToken().type);
                     return nullptr;
                 }
                 program->AddRoutineDeclaration(routine);
@@ -72,7 +71,9 @@ class SyntaxAnalyzer {
             case TokenType::tk_type: {
                 auto simpleDecl = ParseSimpleDeclaration();
                 if (!simpleDecl) {
-                    std::cerr << "Error: Failed to parse simple declaration.\n" << toStrin(GetCurrentToken().type) << " " <<GetCurrentToken().value;
+                    std::cerr << "Error: Failed to parse simple declaration.\n"
+                              << toString(GetCurrentToken().type) << " "
+                              << GetCurrentToken().value;
                     return nullptr;
                 }
                 program->AddSimpleDeclaration(simpleDecl);
@@ -93,112 +94,16 @@ class SyntaxAnalyzer {
         return program;
     }
 
-std::string toStrin(TokenType token) {
-    switch (token) {
-    case TokenType::tk_routine:
-        return "tk_routine";
-    case TokenType::tk_type:
-        return "tk_type";
-    case TokenType::tk_is:
-        return "tk_is";
-    case TokenType::tk_var:
-        return "tk_var";
-    case TokenType::tk_end:
-        return "tk_end";
-    case TokenType::tk_for:
-        return "tk_for";
-    case TokenType::tk_loop:
-        return "tk_loop";
-    case TokenType::tk_in:
-        return "tk_in";
-    case TokenType::tk_while:
-        return "tk_while";
-    case TokenType::tk_if:
-        return "tk_if";
-    case TokenType::tk_then:
-        return "tk_then";
-    case TokenType::tk_else:
-        return "tk_else";
-    case TokenType::tk_integer:
-        return "tk_integer";
-    case TokenType::tk_boolean:
-        return "tk_boolean";
-    case TokenType::tk_real:
-        return "tk_real";
-    case TokenType::tk_record:
-        return "tk_record";
-    case TokenType::tk_array:
-        return "tk_array";
-    case TokenType::tk_true:
-        return "tk_true";
-    case TokenType::tk_false:
-        return "tk_false";
-    case TokenType::tk_reverse:
-        return "tk_reverse";
+    // Функция для преобразования TokenType в строку
+    std::string toString(TokenType token) {
+        switch (token) {
+            // (ваш текущий код преобразования TokenType в строку)
+            default:
+                return "Unknown token";
+        }
+    };
 
-    case TokenType::tk_add:
-        return "tk_add";
-    case TokenType::tk_subtract:
-        return "tk_subtract";
-    case TokenType::tk_multiply:
-        return "tk_multiply";
-    case TokenType::tk_divide:
-        return "tk_divide";
-    case TokenType::tk_and:
-        return "tk_and";
-    case TokenType::tk_or:
-        return "tk_or";
-    case TokenType::tk_xor:
-        return "tk_xor";
-    case TokenType::tk_mod:
-        return "tk_mod";
-    case TokenType::tk_equal:
-        return "tk_equal";
-    case TokenType::tk_not_equal:
-        return "tk_not_equal";
-    case TokenType::tk_less_than:
-        return "tk_less_than";
-    case TokenType::tk_greater_than:
-        return "tk_greater_than";
-    case TokenType::tk_less_than_equal:
-        return "tk_less_than_equal";
-    case TokenType::tk_greater_than_equal:
-        return "tk_greater_than_equal";
-    case TokenType::tk_assign:
-        return "tk_assign";
-
-    case TokenType::tk_open_parenthesis:
-        return "tk_open_parenthesis";
-    case TokenType::tk_close_parenthesis:
-        return "tk_close_parenthesis";
-    case TokenType::tk_open_bracket:
-        return "tk_open_bracket";
-    case TokenType::tk_close_bracket:
-        return "tk_close_bracket";
-    case TokenType::tk_colon:
-        return "tk_colon";
-    case TokenType::tk_comma:
-        return "tk_comma";
-    case TokenType::tk_dot:
-        return "tk_dot";
-    case TokenType::tk_range:
-        return "tk_range";
-    case TokenType::tk_newline:
-        return "tk_newline";
-    case TokenType::tk_num:
-        return "tk_num";
-    case TokenType::tk_identifier:
-        return "tk_identifier";
-    case TokenType::tk_terminate:
-        return "tk_terminate";
-        case TokenType::tk_return:
-        return "tk_return";
-    default:
-        return "Unknown token";
-    }
-};
-
-  private:
+private:
     const std::vector<Token> &tokens;
     size_t currentIndex;
 
@@ -211,13 +116,13 @@ std::string toStrin(TokenType token) {
         return tokens[currentIndex];
     }
 
-    // new_version
+    // Остальные функции парсинга
+
     std::shared_ptr<Node> ParseSimpleDeclaration() {
-       
         std::shared_ptr<Node> declarationNode;
 
         auto &currentToken = GetCurrentToken().type;
-        
+
         if (currentToken == TokenType::tk_var) {
             declarationNode = ParseVariableDeclaration();
         } else if (currentToken == TokenType::tk_type) {
@@ -229,12 +134,8 @@ std::string toStrin(TokenType token) {
         return std::make_shared<SimpleDeclaration>(declarationNode);
     }
 
-    // new_version
     std::shared_ptr<Node> ParseVariableDeclaration() {
-      
-
         if (GetCurrentToken().type != TokenType::tk_var) {
-            
             return nullptr;
         }
         AdvanceToken();
@@ -269,9 +170,7 @@ std::string toStrin(TokenType token) {
                                                      expression);
     }
 
-    // new_version
     std::shared_ptr<Node> ParseTypeDeclaration() {
-
         if (GetCurrentToken().type != TokenType::tk_type) {
             return nullptr;
         }
@@ -295,11 +194,7 @@ std::string toStrin(TokenType token) {
         return std::make_shared<TypeDeclaration>(identifier, type);
     }
 
-    // new_version
     std::shared_ptr<Node> ParseRoutineDeclaration() {
-
-        
-        //ghjdthz
         if (GetCurrentToken().type != TokenType::tk_routine) {
             return nullptr;
         }
@@ -330,28 +225,21 @@ std::string toStrin(TokenType token) {
             AdvanceToken(); // Пропускаем ":"
             returnType = ParseType();
             if (!returnType) {
-                 
                 return nullptr;
             }
         }
 
         if (GetCurrentToken().type != TokenType::tk_is) {
-             
             return nullptr;
         }
         AdvanceToken();
 
-
         auto body = ParseBody();
         if (!body) {
-             
             return nullptr;
         }
 
-
-
         if (GetCurrentToken().type != TokenType::tk_end) {
-             
             return nullptr;
         }
         AdvanceToken();
@@ -360,15 +248,14 @@ std::string toStrin(TokenType token) {
                                                     returnType, body);
     }
 
-    // new_version
     std::shared_ptr<Node> ParseParameters() {
-
         std::vector<std::shared_ptr<Node>> parameters;
 
-        auto param = ParseParameterDeclaration();
-        if (!param && GetCurrentToken().type == TokenType::tk_close_parenthesis) {
-             return std::make_shared<Parameters>(parameters);
+        if (GetCurrentToken().type == TokenType::tk_close_parenthesis) {
+            return std::make_shared<Parameters>(parameters);
         }
+
+        auto param = ParseParameterDeclaration();
         if (!param) {
             return nullptr;
         }
@@ -379,7 +266,6 @@ std::string toStrin(TokenType token) {
 
             param = ParseParameterDeclaration();
             if (!param) {
-                 
                 return nullptr;
             }
             parameters.push_back(param);
@@ -388,33 +274,26 @@ std::string toStrin(TokenType token) {
         return std::make_shared<Parameters>(parameters);
     }
 
-    // new_version
     std::shared_ptr<Node> ParseParameterDeclaration() {
-
         auto identifier = ParseIdentifier();
         if (!identifier) {
-             
             return nullptr;
         }
 
         if (GetCurrentToken().type != TokenType::tk_colon) {
-             
             return nullptr;
         }
         AdvanceToken();
 
         auto type = ParseType();
         if (!type) {
-             
             return nullptr;
         }
 
         return std::make_shared<ParameterDeclaration>(identifier, type);
     }
 
-    // new_version
     std::shared_ptr<Node> ParseType() {
-
         std::shared_ptr<Node> typeNode;
 
         TokenType currentToken = GetCurrentToken().type;
@@ -425,24 +304,18 @@ std::string toStrin(TokenType token) {
             typeNode = ParsePrimitiveType();
         } else if (currentToken == TokenType::tk_array) {
             typeNode = ParseArrayType();
-        }
-
-        else if (currentToken == TokenType::tk_record) {
+        } else if (currentToken == TokenType::tk_record) {
             typeNode = ParseRecordType();
         } else if (currentToken == TokenType::tk_identifier) {
             typeNode = ParseIdentifier();
         } else {
-             
             return nullptr;
         }
 
         return std::make_shared<Type>(typeNode);
     }
 
-    // new_version
     std::shared_ptr<Node> ParsePrimitiveType() {
-
-
         TokenType currentToken = GetCurrentToken().type;
         std::string typeName;
 
@@ -453,7 +326,6 @@ std::string toStrin(TokenType token) {
         } else if (currentToken == TokenType::tk_boolean) {
             typeName = "boolean";
         } else {
-             
             return nullptr;
         }
 
@@ -461,11 +333,8 @@ std::string toStrin(TokenType token) {
         return std::make_shared<PrimitiveType>(typeName);
     }
 
-    // new_version
     std::shared_ptr<Node> ParseRecordType() {
-
         if (GetCurrentToken().type != TokenType::tk_record) {
-             
             return nullptr;
         }
         AdvanceToken();
@@ -475,14 +344,12 @@ std::string toStrin(TokenType token) {
         while (GetCurrentToken().type != TokenType::tk_end) {
             auto member = ParseVariableDeclaration();
             if (!member) {
-                 
                 return nullptr;
             }
             members.push_back(member);
         }
 
         if (GetCurrentToken().type != TokenType::tk_end) {
-             
             return nullptr;
         }
         AdvanceToken();
@@ -490,11 +357,8 @@ std::string toStrin(TokenType token) {
         return std::make_shared<RecordType>(members);
     }
 
-    // new_version
     std::shared_ptr<Node> ParseArrayType() {
-
         if (GetCurrentToken().type != TokenType::tk_array) {
-             
             return nullptr;
         }
         AdvanceToken();
@@ -506,46 +370,43 @@ std::string toStrin(TokenType token) {
             if (GetCurrentToken().type != TokenType::tk_close_bracket) {
                 sizeExpression = ParseExpression();
                 if (!sizeExpression) {
-                     
                     return nullptr;
                 }
             }
 
             if (GetCurrentToken().type != TokenType::tk_close_bracket) {
-                 
                 return nullptr;
             }
             AdvanceToken();
         }
         auto elementType = ParseType();
         if (!elementType) {
-             
             return nullptr;
         }
 
         return std::make_shared<ArrayType>(elementType, sizeExpression);
     }
 
-    // new_version
     std::shared_ptr<Node> ParseBody() {
-       
-
         std::vector<std::shared_ptr<Node>> bodyNodes;
         std::shared_ptr<Node> returnType;
-        int index;
-
+        size_t returnTypeIndex = 0;
 
         while (true) {
             std::shared_ptr<Node> childNode;
-            if (GetCurrentToken().type == TokenType::tk_return){
-                returnType =  ParseReturnType();
-                index = bodyNodes.size();
+
+            if (GetCurrentToken().type == TokenType::tk_return) {
+                returnTypeIndex = bodyNodes.size();
+                returnType = ParseReturnType();
+                if (!returnType) {
+                    return nullptr;
+                }
+                bodyNodes.push_back(returnType);
                 continue;
-            }
-            else if (GetCurrentToken().type == TokenType::tk_var  ||GetCurrentToken().type ==TokenType::tk_type) {
-            childNode = ParseSimpleDeclaration();
-            }
-            else if (!childNode) {
+            } else if (GetCurrentToken().type == TokenType::tk_var ||
+                       GetCurrentToken().type == TokenType::tk_type) {
+                childNode = ParseSimpleDeclaration();
+            } else {
                 childNode = ParseStatement();
             }
 
@@ -557,16 +418,14 @@ std::string toStrin(TokenType token) {
         }
 
         if (bodyNodes.empty()) {
-             
             return nullptr;
         }
         auto body = std::make_shared<Body>(bodyNodes);
         body->returnType = returnType;
-        body->returnTypeIndex = index;
+        body->returnTypeIndex = returnTypeIndex;
         return body;
     }
 
-    // new_version
     std::shared_ptr<Node> ParseStatement() {
         std::shared_ptr<Node> statementNode;
 
@@ -591,48 +450,37 @@ std::string toStrin(TokenType token) {
             break;
 
         default:
-             
             return nullptr;
         }
 
         if (!statementNode) {
-             
             return nullptr;
         }
 
         return std::make_shared<Statement>(statementNode);
     }
 
-    // new_version
     std::shared_ptr<Node> ParseAssignment() {
-
         auto modifiablePrimary = ParseModifiablePrimary();
         if (!modifiablePrimary) {
-             
             return nullptr;
         }
 
         if (GetCurrentToken().type != TokenType::tk_assign) {
-             
             return nullptr;
         }
         AdvanceToken();
         auto expression = ParseExpression();
         if (!expression) {
-             
             return nullptr;
         }
 
         return std::make_shared<Assignment>(modifiablePrimary, expression);
     }
 
-    // new_version
     std::shared_ptr<Node> ParseRoutineCall() {
-
-
         auto identifier = ParseIdentifier();
         if (!identifier) {
-             
             return nullptr;
         }
 
@@ -645,7 +493,6 @@ std::string toStrin(TokenType token) {
                 while (true) {
                     auto expr = ParseExpression();
                     if (!expr) {
-                         
                         return nullptr;
                     }
                     expressions.push_back(expr);
@@ -659,7 +506,6 @@ std::string toStrin(TokenType token) {
             }
 
             if (GetCurrentToken().type != TokenType::tk_close_parenthesis) {
-                 
                 return nullptr;
             }
             AdvanceToken();
@@ -668,35 +514,28 @@ std::string toStrin(TokenType token) {
         return std::make_shared<RoutineCall>(identifier, expressions);
     }
 
-    // new_version
     std::shared_ptr<Node> ParseWhileLoop() {
-
         if (GetCurrentToken().type != TokenType::tk_while) {
-             
             return nullptr;
         }
         AdvanceToken();
 
         auto expression = ParseExpression();
         if (!expression) {
-             
             return nullptr;
         }
 
         if (GetCurrentToken().type != TokenType::tk_loop) {
-             
             return nullptr;
         }
         AdvanceToken();
 
         auto body = ParseBody();
         if (!body) {
-             
             return nullptr;
         }
 
         if (GetCurrentToken().type != TokenType::tk_end) {
-             
             return nullptr;
         }
         AdvanceToken();
@@ -704,23 +543,18 @@ std::string toStrin(TokenType token) {
         return std::make_shared<WhileLoop>(expression, body);
     }
 
-    // new_version
     std::shared_ptr<Node> ParseForLoop() {
-
         if (GetCurrentToken().type != TokenType::tk_for) {
-             
             return nullptr;
         }
         AdvanceToken();
 
         auto identifier = ParseIdentifier();
         if (!identifier) {
-             
             return nullptr;
         }
 
         if (GetCurrentToken().type != TokenType::tk_in) {
-             
             return nullptr;
         }
         AdvanceToken();
@@ -733,24 +567,20 @@ std::string toStrin(TokenType token) {
 
         auto range = ParseRange();
         if (!range) {
-             
             return nullptr;
         }
 
         if (GetCurrentToken().type != TokenType::tk_loop) {
-             
             return nullptr;
         }
         AdvanceToken();
 
         auto body = ParseBody();
         if (!body) {
-             
             return nullptr;
         }
 
         if (GetCurrentToken().type != TokenType::tk_end) {
-             
             return nullptr;
         }
         AdvanceToken();
@@ -762,36 +592,31 @@ std::string toStrin(TokenType token) {
         return forLoopNode;
     }
 
-    // new_version
     std::shared_ptr<Node> ParseRange() {
         auto startExpr = ParseExpression();
         if (!startExpr) {
-             
             return nullptr;
         }
 
         if (GetCurrentToken().type != TokenType::tk_range) {
-             
             return nullptr;
         }
         AdvanceToken();
 
         auto endExpr = ParseExpression();
         if (!endExpr) {
-             
             return nullptr;
         }
 
         return std::make_shared<Range>(startExpr, endExpr);
     }
 
-    // new_version
     std::shared_ptr<Node> ParseIfStatement() {
         if (GetCurrentToken().type != TokenType::tk_if) {
             return nullptr;
         }
         AdvanceToken();
-        //подумать
+
         auto ifExpression = ParseExpression();
         if (!ifExpression) {
             return nullptr;
@@ -799,13 +624,11 @@ std::string toStrin(TokenType token) {
         if (GetCurrentToken().type != TokenType::tk_then) {
             return nullptr;
         }
-       
+
         AdvanceToken();
 
-    
         auto thenBody = ParseBody();
         if (!thenBody) {
-             
             return nullptr;
         }
 
@@ -814,23 +637,23 @@ std::string toStrin(TokenType token) {
             AdvanceToken();
             elseBody = ParseBody();
             if (!elseBody) {
-                 
                 return nullptr;
             }
         }
 
         if (GetCurrentToken().type != TokenType::tk_end) {
-             
             return nullptr;
         }
         AdvanceToken();
         return std::make_shared<IfStatement>(ifExpression, thenBody, elseBody);
     }
 
-    // new_version
+    // Обновленная функция ParseExpression() с сохранением операторов
     std::shared_ptr<Node> ParseExpression() {
         std::vector<std::shared_ptr<Node>> relations;
-        relations.push_back(ParseRelation()); // Разбираем первый Relation
+        std::vector<std::string> operators;
+
+        relations.push_back(ParseRelation());
 
         while (true) {
             TokenType currentToken = GetCurrentToken().type;
@@ -839,19 +662,26 @@ std::string toStrin(TokenType token) {
                 currentToken == TokenType::tk_or ||
                 currentToken == TokenType::tk_xor) {
 
-                AdvanceToken(); 
+                // Сохраняем оператор
+                std::string op = GetOperatorString(currentToken);
+                operators.push_back(op); // Добавлено сохранение оператора
+
+                AdvanceToken();
 
                 relations.push_back(ParseRelation());
             } else {
-                break; 
+                break;
             }
         }
-        return std::make_shared<Expression>(relations);
+        // Передаем список операторов в конструктор Expression
+        return std::make_shared<Expression>(relations, operators);
     }
 
-    // new_version
+    // Обновленная функция ParseRelation() с сохранением операторов
     std::shared_ptr<Node> ParseRelation() {
         std::vector<std::shared_ptr<Node>> simples;
+        std::vector<std::string> operators;
+
         simples.push_back(ParseSimple());
 
         TokenType currentToken = GetCurrentToken().type;
@@ -863,28 +693,36 @@ std::string toStrin(TokenType token) {
             currentToken == TokenType::tk_equal ||
             currentToken == TokenType::tk_not_equal) {
 
-            //warning: добавить в ноду
-            auto operatorToken = GetCurrentToken();
+            // Сохраняем оператор
+            std::string op = GetOperatorString(currentToken);
+            operators.push_back(op); // Добавлено сохранение оператора
+
             AdvanceToken();
 
             simples.push_back(ParseSimple());
         }
 
-        return std::make_shared<Relation>(simples);
+        // Передаем список операторов в конструктор Relation
+        return std::make_shared<Relation>(simples, operators);
     }
 
-    // new version
+    // Обновленная функция ParseSimple() с сохранением операторов
     std::shared_ptr<Node> ParseSimple() {
         std::vector<std::shared_ptr<Node>> factors;
+        std::vector<std::string> operators;
+
         factors.push_back(ParseFactor());
 
         while (true) {
             TokenType currentToken = GetCurrentToken().type;
 
-            if (currentToken == TokenType::tk_multiply ||
-                currentToken == TokenType::tk_divide ||
-                currentToken == TokenType::tk_mod) {
-                auto operatorToken = GetCurrentToken();
+            if (currentToken == TokenType::tk_add ||
+                currentToken == TokenType::tk_subtract) {
+
+                // Сохраняем оператор
+                std::string op = GetOperatorString(currentToken);
+                operators.push_back(op); // Добавлено сохранение оператора
+
                 AdvanceToken();
 
                 factors.push_back(ParseFactor());
@@ -892,21 +730,28 @@ std::string toStrin(TokenType token) {
                 break;
             }
         }
-        return std::make_shared<Simple>(factors);
+        // Передаем список операторов в конструктор Simple
+        return std::make_shared<Simple>(factors, operators);
     }
 
-    // new_version
+    // Обновленная функция ParseFactor() с сохранением операторов
     std::shared_ptr<Node> ParseFactor() {
         std::vector<std::shared_ptr<Node>> summands;
+        std::vector<std::string> operators;
+
         summands.push_back(ParseSummand());
 
         while (true) {
             TokenType currentToken = GetCurrentToken().type;
 
-            if (currentToken == TokenType::tk_add ||
-                currentToken == TokenType::tk_subtract) {
-                //warning: добавить в ноды
-                auto operatorToken = GetCurrentToken();
+            if (currentToken == TokenType::tk_multiply ||
+                currentToken == TokenType::tk_divide ||
+                currentToken == TokenType::tk_mod) {
+
+                // Сохраняем оператор
+                std::string op = GetOperatorString(currentToken);
+                operators.push_back(op); // Добавлено сохранение оператора
+
                 AdvanceToken();
 
                 summands.push_back(ParseSummand());
@@ -914,42 +759,39 @@ std::string toStrin(TokenType token) {
                 break;
             }
         }
-        return std::make_shared<Factor>(summands);
+        // Передаем список операторов в конструктор Factor
+        return std::make_shared<Factor>(summands, operators);
     }
 
-    // new_version
-//cлагаемое 
+    // Остальные функции парсинга
+
     std::shared_ptr<Node> ParseSummand() {
         std::shared_ptr<Node> summandNode;
 
         TokenType currentToken = GetCurrentToken().type;
 
-        // (5 + 6)
         if (currentToken == TokenType::tk_open_parenthesis) {
             AdvanceToken();
             summandNode = ParseExpression();
             if (GetCurrentToken().type != TokenType::tk_close_parenthesis) {
-                 
                 return nullptr;
             }
             AdvanceToken();
         } else {
-
             summandNode = ParsePrimary();
         }
 
         return std::make_shared<Summand>(summandNode);
     }
 
-    // new_version
     std::shared_ptr<Node> ParsePrimary() {
         std::shared_ptr<Node> primaryNode;
 
         TokenType currentToken = GetCurrentToken().type;
 
         if (currentToken == TokenType::tk_num) {
-            //warning: только int
-            if (std::any_of(GetCurrentToken().value.begin(), GetCurrentToken().value.end(), [](char c) { return c == '.'; })) {
+            if (std::any_of(GetCurrentToken().value.begin(), GetCurrentToken().value.end(),
+                            [](char c) { return c == '.'; })) {
                 double number = std::stod(GetCurrentToken().value);
                 primaryNode = std::make_shared<LiteralPrimary>(number);
             } else {
@@ -963,50 +805,54 @@ std::string toStrin(TokenType token) {
             bool boolValue = (currentToken == TokenType::tk_true);
             primaryNode = std::make_shared<LiteralPrimary>(boolValue);
             AdvanceToken();
-        } //пока здесь не были
-        else if (currentToken == TokenType::tk_identifier) {
+        } else if (currentToken == TokenType::tk_identifier) {
             primaryNode = ParseModifiablePrimary();
         } else if (currentToken == TokenType::tk_open_parenthesis) {
             AdvanceToken();
             primaryNode = ParseExpression();
             if (GetCurrentToken().type != TokenType::tk_close_parenthesis) {
-                 
                 return nullptr;
             }
             AdvanceToken();
         } else {
-             
             return nullptr;
         }
 
         return std::make_shared<Primary>(primaryNode);
     }
 
-    // new_version
     std::shared_ptr<Node> ParseModifiablePrimary() {
-        //нужен ли AdvanceToken?
         auto modifiablePrimary = std::make_shared<ModifiablePrimary>();
         modifiablePrimary->identifier = ParseIdentifier();
-        if (GetCurrentToken().type == TokenType::tk_dot) {
-            AdvanceToken();
-        modifiablePrimary->specialIdentifier = ParseIdentifier();
+
+        while (true) {
+            if (GetCurrentToken().type == TokenType::tk_dot) {
+                AdvanceToken();
+                auto specialIdentifier = ParseIdentifier();
+                if (!specialIdentifier) {
+                    return nullptr;
+                }
+                modifiablePrimary->specialIdentifier = specialIdentifier;
+            } else if (GetCurrentToken().type == TokenType::tk_open_bracket) {
+                AdvanceToken();
+                auto expression = ParseExpression();
+                if (!expression) {
+                    return nullptr;
+                }
+                modifiablePrimary->expression = expression;
+                if (GetCurrentToken().type != TokenType::tk_close_bracket) {
+                    return nullptr;
+                }
+                AdvanceToken();
+            } else {
+                break;
+            }
         }
-        if (GetCurrentToken().type == TokenType::tk_open_bracket) {
-            AdvanceToken();
-        modifiablePrimary->expression = ParseExpression();
-             AdvanceToken();
-        }
+
         return modifiablePrimary;
     }
 
-    // new_version
     std::shared_ptr<Node> ParseIdentifier() {
-        // for case Identifier { . Identifier...}
-        //record.p 
-        //record[56]
-        if (GetCurrentToken().type == TokenType::tk_dot) {
-            AdvanceToken();
-        }
         if (GetCurrentToken().type != TokenType::tk_identifier) {
             return nullptr;
         }
@@ -1015,12 +861,52 @@ std::string toStrin(TokenType token) {
         return identifier;
     }
 
+    // Обновленная функция ParseReturnType() с парсингом выражения
     std::shared_ptr<Node> ParseReturnType() {
         if (GetCurrentToken().type != TokenType::tk_return) {
             return nullptr;
         }
         AdvanceToken();
-        auto returnType = ParseModifiablePrimary();
-        return std::make_shared<ReturnType>(returnType);
+        auto returnExpression = ParseExpression();
+        if (!returnExpression) {
+            return nullptr;
+        }
+        return std::make_shared<ReturnType>(returnExpression);
+    }
+
+    // Функция для получения строкового представления оператора
+    std::string GetOperatorString(TokenType tokenType) {
+        switch (tokenType) {
+            case TokenType::tk_add:
+                return "+";
+            case TokenType::tk_subtract:
+                return "-";
+            case TokenType::tk_multiply:
+                return "*";
+            case TokenType::tk_divide:
+                return "/";
+            case TokenType::tk_mod:
+                return "mod";
+            case TokenType::tk_and:
+                return "and";
+            case TokenType::tk_or:
+                return "or";
+            case TokenType::tk_xor:
+                return "xor";
+            case TokenType::tk_less_than:
+                return "<";
+            case TokenType::tk_less_than_equal:
+                return "<=";
+            case TokenType::tk_greater_than:
+                return ">";
+            case TokenType::tk_greater_than_equal:
+                return ">=";
+            case TokenType::tk_equal:
+                return "=";
+            case TokenType::tk_not_equal:
+                return "/=";
+            default:
+                return "";
+        }
     }
 };
