@@ -3,7 +3,7 @@
 #include "tokens/enums/token_type.h"
 #include "tokens/pars/pars_functions.h"
 #include "type_checker.cpp"
-#include <cctype>
+#include "ir_generator.cpp"
 #include <fstream>
 #include <vector>
 
@@ -144,5 +144,8 @@ int main() {
     SyntaxAnalyzer syntaxAnalyzer(output);
     const std::unique_ptr<Node> ast = syntaxAnalyzer.Analyze();
     std::cout << ast->ToString(2) << std::endl;
+
+    auto generator = new IRGenerator();
+    generator->generateProgram(ast.get());
 
 }
