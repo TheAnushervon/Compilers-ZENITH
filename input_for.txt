@@ -1,18 +1,4 @@
-routine CheckAndPrintSolution(a: real, b: real) : real is
-     var new_a: real is 3.0
-      return new_a
-
-    if a[0] /= 0.0 then
-        var solution: real is 5
-    else
-        var new_a: real is 3.0
-    end
+routine sum(a: integer, b: integer) : integer is
+    var sum : integer is a + b
+    return sum;
 end
-
-
-
-
-
-
-
-

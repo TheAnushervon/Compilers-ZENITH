@@ -144,9 +144,5 @@ int main() {
     SyntaxAnalyzer syntaxAnalyzer(output);
     const std::unique_ptr<Node> ast = syntaxAnalyzer.Analyze();
     std::cout << ast->ToString(2) << std::endl;
-    auto *tc = new TypeChecker();
-    tc->GlobalAndRoutineScopeTypeCheck(ast);
-    tc->OptimizeAST(ast);
-    std::cout << ast->ToString(2) << std::endl;
 
 }
