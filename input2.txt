@@ -1,1 +1,9 @@
+routine sum(a: integer, b: integer) : integer is
+    var s : integer is a + b
+    return s
+end
 
+routine first_more_second(a: integer, b: integer) : boolean is
+    var ans : boolean is a > b
+    return ans
+end
