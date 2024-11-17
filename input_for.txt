@@ -1,4 +1,4 @@
 routine sum(a: integer, b: integer) : integer is
     var s : integer is a + b
-    return s;
+    return s
 end
