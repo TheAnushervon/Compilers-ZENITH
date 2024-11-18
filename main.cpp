@@ -8,6 +8,7 @@
 #include <vector>
 
 namespace nh = nlohmann;
+namespace fs = std::filesystem;
 
 std::string toString(TokenType token) {
     switch (token) {
@@ -116,6 +117,32 @@ std::string toString(TokenType token) {
 
 int main() {
 
+    const std::string logDir = "logs";
+
+    try {
+        // Проверяем, существует ли каталог
+        if (!fs::exists(logDir) || !fs::is_directory(logDir)) {
+            std::cerr << "Directory " << logDir << " does not exist or is not a directory." << std::endl;
+            return 1;
+        }
+
+        // Итерируемся по всем файлам в каталоге
+        for (const auto& entry : fs::directory_iterator(logDir)) {
+            if (entry.is_regular_file()) {
+                // Очищаем файл
+                std::ofstream logFile(entry.path(), std::ios::out | std::ios::trunc);
+                if (!logFile.is_open()) {
+                    std::cerr << "Failed to clear file: " << entry.path() << std::endl;
+                }
+
+            }
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return 1;
+    }
+
+
     std::ifstream inputfile("input_for.txt");
     std::string fileContents((std::istreambuf_iterator<char>(inputfile)),
                              std::istreambuf_iterator<char>());
@@ -143,9 +170,18 @@ int main() {
 
     SyntaxAnalyzer syntaxAnalyzer(output);
     const std::unique_ptr<Node> ast = syntaxAnalyzer.Analyze();
-    std::cout << ast->ToString(2) << std::endl;
+
+    // Вывод в файл ast.txt
+    std::ofstream astFile("ast.txt", std::ios::out | std::ios::trunc);
+    if (astFile.is_open()) {
+        astFile << ast->ToString(2) << std::endl;
+        astFile.close();
+    } else {
+        std::cerr << "Failed to open file ast.txt for writing." << std::endl;
+    }
 
     auto generator = new IRGenerator();
     generator->generateProgram(ast.get());
+    free(generator);
 
 }

@@ -17,7 +17,7 @@ public:
 
     std::string ToString(int counter) const override {
         std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
-        std::string result = ots + "IfStatement:\n";
+        std::string result =  "IfStatement:\n";
         result += ifExpression->ToString(counter+2);
         
 

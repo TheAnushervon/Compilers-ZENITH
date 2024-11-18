@@ -7,3 +7,12 @@ routine first_more_second(a: integer, b: integer) : boolean is
     var ans : boolean is a > b
     return ans
 end
+
+routine comparator(a: integer, b: integer ) : integer is
+    var max : integer is b
+    if (a > b) then
+        max := a
+    end
+    return max
+end
+

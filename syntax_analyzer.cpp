@@ -613,22 +613,31 @@ private:
 
     std::shared_ptr<Node> ParseIfStatement() {
         if (GetCurrentToken().type != TokenType::tk_if) {
+            std::cerr << "Error: Expected 'if', but found " << GetCurrentToken().value << "\n";
             return nullptr;
         }
         AdvanceToken();
+        std::shared_ptr<Node> ifExpression = nullptr;
+        if (GetCurrentToken().type == TokenType::tk_open_parenthesis) {
+            AdvanceToken();
+            ifExpression = ParseExpression();
+            AdvanceToken();
+        }
 
-        auto ifExpression = ParseExpression();
         if (!ifExpression) {
-            return nullptr;
-        }
-        if (GetCurrentToken().type != TokenType::tk_then) {
+            std::cerr << "Error: Failed to parse expression in IfStatement.\n";
             return nullptr;
         }
 
+        if (GetCurrentToken().type != TokenType::tk_then) {
+            std::cerr << "Error: Expected 'then', but found " << GetCurrentToken().value << "\n";
+            return nullptr;
+        }
         AdvanceToken();
 
         auto thenBody = ParseBody();
         if (!thenBody) {
+            std::cerr << "Error: Failed to parse 'then' body in IfStatement.\n";
             return nullptr;
         }
 
@@ -637,23 +646,33 @@ private:
             AdvanceToken();
             elseBody = ParseBody();
             if (!elseBody) {
+                std::cerr << "Error: Failed to parse 'else' body in IfStatement.\n";
                 return nullptr;
             }
         }
 
         if (GetCurrentToken().type != TokenType::tk_end) {
+            std::cerr << "Error: Expected 'end', but found " << GetCurrentToken().value << "\n";
             return nullptr;
         }
         AdvanceToken();
-        return std::make_shared<IfStatement>(ifExpression, thenBody, elseBody);
+
+        auto ifStatementNode = std::make_shared<IfStatement>(ifExpression, thenBody, elseBody);
+        return ifStatementNode;
     }
+
 
     // Обновленная функция ParseExpression() с сохранением операторов
     std::shared_ptr<Node> ParseExpression() {
         std::vector<std::shared_ptr<Node>> relations;
         std::vector<std::string> operators;
 
-        relations.push_back(ParseRelation());
+        auto relation = ParseRelation();
+        if (!relation) {
+            std::cerr << "Error: Failed to parse Relation in ParseExpression.\n";
+            return nullptr;
+        }
+        relations.push_back(relation);
 
         while (true) {
             TokenType currentToken = GetCurrentToken().type;
@@ -664,25 +683,38 @@ private:
 
                 // Сохраняем оператор
                 std::string op = GetOperatorString(currentToken);
-                operators.push_back(op); // Добавлено сохранение оператора
+                operators.push_back(op);
 
                 AdvanceToken();
 
-                relations.push_back(ParseRelation());
-            } else {
-                break;
-            }
+                auto nextRelation = ParseRelation();
+                if (!nextRelation) {
+                    std::cerr << "Error: Failed to parse Relation in ParseExpression after operator.\n";
+                    return nullptr;
+                }
+                relations.push_back(nextRelation);
+                } else {
+                    break;
+                }
         }
-        // Передаем список операторов в конструктор Expression
-        return std::make_shared<Expression>(relations, operators);
+
+        auto expressionNode = std::make_shared<Expression>(relations, operators);
+        return expressionNode;
     }
+
 
     // Обновленная функция ParseRelation() с сохранением операторов
     std::shared_ptr<Node> ParseRelation() {
+
         std::vector<std::shared_ptr<Node>> simples;
         std::vector<std::string> operators;
 
-        simples.push_back(ParseSimple());
+        auto simple = ParseSimple();
+        if (!simple) {
+            std::cerr << "Error: Failed to parse Simple in ParseRelation.\n";
+            return nullptr;
+        }
+        simples.push_back(simple);
 
         TokenType currentToken = GetCurrentToken().type;
 
@@ -693,18 +725,23 @@ private:
             currentToken == TokenType::tk_equal ||
             currentToken == TokenType::tk_not_equal) {
 
-            // Сохраняем оператор
             std::string op = GetOperatorString(currentToken);
-            operators.push_back(op); // Добавлено сохранение оператора
+            operators.push_back(op);
 
             AdvanceToken();
 
-            simples.push_back(ParseSimple());
-        }
+            auto nextSimple = ParseSimple();
+            if (!nextSimple) {
+                std::cerr << "Error: Failed to parse Simple in ParseRelation after operator.\n";
+                return nullptr;
+            }
+            simples.push_back(nextSimple);
+            }
 
-        // Передаем список операторов в конструктор Relation
-        return std::make_shared<Relation>(simples, operators);
+        auto relationNode = std::make_shared<Relation>(simples, operators);
+        return relationNode;
     }
+
 
     // Обновленная функция ParseSimple() с сохранением операторов
     std::shared_ptr<Node> ParseSimple() {
