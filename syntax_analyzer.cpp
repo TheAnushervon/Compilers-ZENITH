@@ -69,14 +69,20 @@ public:
             case TokenType::tk_identifier:
             case TokenType::tk_var:
             case TokenType::tk_type: {
-                auto simpleDecl = ParseSimpleDeclaration();
-                if (!simpleDecl) {
-                    std::cerr << "Error: Failed to parse simple declaration.\n"
-                              << toString(GetCurrentToken().type) << " "
-                              << GetCurrentToken().value;
-                    return nullptr;
+                if (currentIndex+1 < tokens.size() && GetCurrentToken().type == TokenType::tk_identifier && GetNextToken().type == TokenType::tk_open_parenthesis) {
+                    auto routineCall = ParseRoutineCall();
+                    program->AddSimpleDeclaration(routineCall);
+                }else {
+                    auto simpleDecl = ParseSimpleDeclaration();
+
+                    if (!simpleDecl) {
+                        std::cerr << "Error: Failed to parse simple declaration.\n"
+                                  << toString(GetCurrentToken().type) << " "
+                                  << GetCurrentToken().value;
+                        return nullptr;
+                    }
+                    program->AddSimpleDeclaration(simpleDecl);
                 }
-                program->AddSimpleDeclaration(simpleDecl);
                 break;
             }
 
@@ -112,6 +118,13 @@ private:
     const Token &AdvanceToken() {
         if (currentIndex < tokens.size() - 1) {
             currentIndex++;
+        }
+        return tokens[currentIndex];
+    }
+
+    const Token &GetNextToken() const{
+        if (currentIndex < tokens.size() - 1) {
+            return tokens[currentIndex+1];
         }
         return tokens[currentIndex];
     }
