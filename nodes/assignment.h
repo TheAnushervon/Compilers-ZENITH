@@ -17,8 +17,8 @@ public:
         std::string ots(count * 2, ' '); // Отступы с учетом уровня вложенности
         std::string result = ots + "Assignment:\n";
 
-        result += ots + "  ModifiablePrimary:\n" + modifiablePrimary->ToString(count + 2);
-        result += ots + "  Expression:\n" + expression->ToString(count + 2);
+        result += modifiablePrimary->ToString(count + 2);
+        result += expression->ToString(count + 2);
 
         return result;
     }

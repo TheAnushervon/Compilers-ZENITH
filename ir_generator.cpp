@@ -14,10 +14,12 @@
 #include <vector>
 #include <algorithm>
 #include <set>
+#include <fstream>
 
 // Включите ваши заголовочные файлы узлов AST
 #include "nodes/node.h"
 #include "nodes/program.h"
+#include "utility/utils.cpp"
 #include "nodes/routine_declaration.h"
 #include "nodes/primitive_type.h"
 #include "nodes/type.h"
@@ -32,12 +34,15 @@
 #include "nodes/summand.h"
 #include "nodes/factor.h"
 #include "nodes/modifiable_primary.h"
+#include "nodes/if_statement.h"
+#include "nodes/assignment.h"
 
 class IRGenerator {
 public:
     llvm::LLVMContext context;                  // Контекст для IR
     llvm::IRBuilder<> builder;                  // Утилита для построения инструкций
     std::unique_ptr<llvm::Module> module;       // Хранилище IR
+    const std::string logFilePath = "logs/ir_generator.txt";
 
     IRGenerator() : builder(context) {
         module = std::make_unique<llvm::Module>("MyProgram", context);
@@ -66,9 +71,12 @@ private:
         // 1. Извлечение возвращаемого типа
         llvm::Type* returnType = builder.getVoidTy();
         auto type = dynamic_cast<Type*>(routine->returnType.get());
-        if (auto primitiveType = dynamic_cast<PrimitiveType*>(type->child.get())) {
-            returnType = mapType(type->child.get());
+        if (type && type->child) {
+            if (auto primitiveType = dynamic_cast<PrimitiveType*>(type->child.get())) {
+                returnType = mapType(type->child.get());
+            }
         }
+        utils::log(logFilePath, "INFO", "1 этап: ок");
         std::cout << "1 этап: ок\n";
 
         // 2. Извлечение параметров
@@ -90,6 +98,7 @@ private:
 
         // Очистка имени идентификатора функции
         std::string funcName = sanitizeName(identifier->name);
+        llvm::outs() << "Creating function: " << funcName << "\n";
 
         llvm::Function* function = llvm::Function::Create(
             funcType,
@@ -116,6 +125,7 @@ private:
                         std::string name = sanitizeName(paramName->name);
                         arg.setName(name); // Устанавливаем имя параметра
                         param_names.insert(name);
+                        llvm::outs() << "Parameter " << idx << ": " << name << "\n";
                     }
                 }
                 ++idx;
@@ -149,6 +159,7 @@ private:
 
                         // Очистка имени идентификатора переменной
                         std::string varName = sanitizeName(identifier->name);
+                        llvm::outs() << "Declaring variable: " << varName << "\n";
 
                         auto type = dynamic_cast<Type*>(varDecl->type.get());
                         if (!type) {
@@ -164,12 +175,14 @@ private:
 
                         llvm::Value* alloca = builder.CreateAlloca(varType, nullptr, varName);
                         localVars[varName] = alloca;
+                        llvm::outs() << "Allocated space for " << varName << "\n";
 
                         if (auto expression = dynamic_cast<Expression*>(varDecl->expression.get())) {
                             if (!expression->relations.empty()) {
                                 llvm::Value* exprValue = generateExpression(expression, localVars, param_names);
                                 if (exprValue) {
                                     builder.CreateStore(exprValue, alloca);
+                                    llvm::outs() << "Stored value in " << varName << "\n";
                                 } else {
                                     llvm::errs() << "Error: Failed to generate expression for variable " << varName << "\n";
                                 }
@@ -180,13 +193,28 @@ private:
                     }
                 }
 
+                if (auto st = dynamic_cast<Statement*>(stmt.get())) {
+                    // Обработка IfStatement
+                    if (auto ifStmt = dynamic_cast<IfStatement*>(st->child.get())) {
+                        generateIfStatement(ifStmt, localVars, param_names);
+                    }
+                }
+
+                // Обработка Assignment
+                if (auto assignStmt = dynamic_cast<Assignment*>(stmt.get())) {
+                    generateAssignment(assignStmt, localVars, param_names);
+                }
+
                 // Генерация return
                 if (auto returnStmt = dynamic_cast<ReturnType*>(stmt.get())) {
+                    // Проверяем, существует ли член 'expression' в ReturnType
+                    // Предполагается, что 'expression' является публичным членом класса ReturnType
                     auto expression = dynamic_cast<Expression*>(returnStmt->type.get());
                     if (expression && !expression->relations.empty()) {
                         llvm::Value* returnValue = generateExpression(expression, localVars, param_names);
                         if (returnValue) {
                             builder.CreateRet(returnValue); // Возвращаем вычисленное значение
+                            llvm::outs() << "Return statement generated.\n";
                         } else {
                             llvm::errs() << "Error: Failed to generate return value.\n";
                         }
@@ -209,57 +237,230 @@ private:
         module->print(llvm::outs(), nullptr);
     }
 
-    // Функция для генерации Expression (Relation { ( and | or | xor ) Relation })
-    llvm::Value* generateExpression(
-        const Expression* expr,
-        std::unordered_map<std::string, llvm::Value*>& localVars,
-        const std::set<std::string>& param_names)
-    {
-        if (expr->relations.empty()) {
-            llvm::errs() << "Error: Expression contains no Relations.\n";
-            return nullptr;
-        }
+    // Метод для генерации IfStatement
+  void generateIfStatement(
+    const IfStatement* ifStmt,
+    std::unordered_map<std::string, llvm::Value*>& localVars,
+    const std::set<std::string>& param_names
+) {
+    llvm::outs() << "Generating IfStatement...\n";
 
-        // Генерация первого Relation
-        llvm::Value* result = generateRelation(dynamic_cast<Relation*>(expr->relations[0].get()), localVars, param_names);
-        if (!result) {
-            llvm::errs() << "Error: Failed to generate first Relation in Expression.\n";
-            return nullptr;
-        }
-
-        // Итерируемся по оставшимся Relations и операторам
-        for (size_t i = 1; i < expr->relations.size(); ++i) {
-            if (i-1 >= expr->operators.size()) {
-                llvm::errs() << "Error: Not enough operators in Expression.\n";
-                break;
-            }
-
-            std::string op = expr->operators[i-1];
-            llvm::Value* rhs = generateRelation(dynamic_cast<Relation*>(expr->relations[i].get()), localVars, param_names);
-            if (!rhs) {
-                llvm::errs() << "Error: Failed to generate Relation at index " << i << " in Expression.\n";
-                return nullptr;
-            }
-
-            std::cout << "Processing Expression operator: " << op << "\n";
-
-            if (op == "and") {
-                result = builder.CreateAnd(result, rhs, "andtmp_expression");
-            }
-            else if (op == "or") {
-                result = builder.CreateOr(result, rhs, "ortmp_expression");
-            }
-            else if (op == "xor") {
-                result = builder.CreateXor(result, rhs, "xortmp_expression");
-            }
-            else {
-                llvm::errs() << "Error: Unsupported Expression operator '" << op << "'.\n";
-                return nullptr;
-            }
-        }
-
-        return result;
+    // Генерация условия
+    llvm::Value* condValue = generateExpression(dynamic_cast<Expression*>(ifStmt->ifExpression.get()), localVars, param_names);
+    if (!condValue) {
+        llvm::errs() << "Error: Failed to generate condition for if statement.\n";
+        return;
     }
+    llvm::outs() << "Condition generated successfully.\n";
+
+    // Приведение условия к типу i1 (булев)
+    if (!condValue->getType()->isIntegerTy(1)) {
+        condValue = builder.CreateICmpNE(condValue, llvm::ConstantInt::get(condValue->getType(), 0), "ifcond");
+        llvm::outs() << "Condition converted to i1.\n";
+    } else {
+        llvm::outs() << "Condition is already i1.\n";
+    }
+
+    // Получение текущей функции
+    llvm::Function* function = builder.GetInsertBlock()->getParent();
+
+    // Создание базовых блоков
+    llvm::BasicBlock* thenBB = llvm::BasicBlock::Create(context, "then", function);
+    llvm::BasicBlock* elseBB = llvm::BasicBlock::Create(context, "else", function);
+    llvm::BasicBlock* mergeBB = llvm::BasicBlock::Create(context, "ifcont", function);
+
+    // Создание перехода на then или else
+    builder.CreateCondBr(condValue, thenBB, elseBB);
+    llvm::outs() << "Conditional branch created.\n";
+
+    // Генерация блока then
+    builder.SetInsertPoint(thenBB);
+    llvm::outs() << "Generating then block...\n";
+
+    if (ifStmt->thenBody) {
+        auto body = dynamic_cast<Body*>(ifStmt->thenBody.get());
+        if (body) {
+            for (const auto& stmt : body->statements) {
+                // Обработка присваивания
+                if (auto curr = dynamic_cast<Statement*>(stmt.get())) {
+                    if (auto assignStmt = dynamic_cast<Assignment*>(curr->child.get())) {
+                        generateAssignment(assignStmt, localVars, param_names);
+                    }
+                }
+            }
+        }
+    }
+
+    // Если блок не содержит терминатора, добавляем переход на merge
+    if (!thenBB->getTerminator()) {
+        builder.CreateBr(mergeBB);
+        llvm::outs() << "Added branch to merge in then block.\n";
+    }
+
+    // Генерация блока else
+    builder.SetInsertPoint(elseBB);
+    llvm::outs() << "Generating else block...\n";
+
+    if (ifStmt->elseBody) {
+        auto body = dynamic_cast<Body*>(ifStmt->elseBody.get());
+        if (body) {
+            for (const auto& stmt : body->statements) {
+                // Обработка присваивания
+                if (auto assignStmt = dynamic_cast<Assignment*>(stmt.get())) {
+                    generateAssignment(assignStmt, localVars, param_names);
+                }
+            }
+        }
+    }
+
+    // Если блок не содержит терминатора, добавляем переход на merge
+    if (!elseBB->getTerminator()) {
+        builder.CreateBr(mergeBB);
+        llvm::outs() << "Added branch to merge in else block.\n";
+    }
+
+    // Установка точки вставки в блок merge
+    builder.SetInsertPoint(mergeBB);
+    llvm::outs() << "Set insert point to merge block.\n";
+}
+
+
+    // Метод для генерации Assignment (Присваивания)
+    void generateAssignment(
+        const Assignment* assignStmt,
+        std::unordered_map<std::string, llvm::Value*>& localVars,
+        const std::set<std::string>& param_names
+    ) {
+        llvm::outs() << "Generating Assignment...\n";
+
+        // Получаем имя переменной
+        auto modifiable = dynamic_cast<ModifiablePrimary*>(assignStmt->modifiablePrimary.get());
+        if (!modifiable) {
+            llvm::errs() << "Error: Assignment does not contain ModifiablePrimary.\n";
+            return;
+        }
+        auto identifier = dynamic_cast<Identifier*>(modifiable->identifier.get());
+        if (!identifier) {
+            llvm::errs() << "Error: ModifiablePrimary does not contain Identifier.\n";
+            return;
+        }
+
+        std::string varName = sanitizeName(identifier->name);
+        llvm::outs() << "Assigning to variable: " << varName << "\n";
+
+        // Поиск переменной в локальных
+        auto it = localVars.find(varName);
+        if (it == localVars.end()) {
+            llvm::errs() << "Error: Variable " << varName << " not found.\n";
+            return;
+        }
+
+        llvm::Value* varAlloca = it->second;
+
+        // Генерация выражения для присваивания
+        auto exprNode = assignStmt->expression.get();
+        auto expression = dynamic_cast<Expression*>(exprNode);
+        if (!expression) {
+            llvm::errs() << "Error: Assignment expression is not of type Expression.\n";
+            return;
+        }
+
+        llvm::Value* exprValue = generateExpression(expression, localVars, param_names);
+        if (!exprValue) {
+            llvm::errs() << "Error: Failed to generate expression for assignment.\n";
+            return;
+        }
+
+        // Создаём инструкцию store
+        builder.CreateStore(exprValue, varAlloca);
+        llvm::outs() << "Stored value in " << varName << "\n";
+    }
+
+
+
+
+
+    // Вспомогательный метод для генерации тела (Body) в блоках if
+    void generateBody(
+     const Node* bodyNode,
+     std::unordered_map<std::string, llvm::Value*>& localVars,
+     const std::set<std::string>& param_names
+ ) {
+
+        auto body = dynamic_cast<const Body*>(bodyNode);
+        if (!body) {
+            llvm::errs() << "Error: Body is not of type Body.\n";
+            return;
+        }
+
+
+        for (const auto& stmt : body->statements) {
+            if (auto assignStmt = dynamic_cast<const Assignment*>(stmt.get())) {
+                generateAssignment(assignStmt, localVars, param_names);
+            }
+
+            if (auto ifStmt = dynamic_cast<const IfStatement*>(stmt.get())) {
+                generateIfStatement(ifStmt, localVars, param_names);
+            }
+        }
+    }
+
+
+    // Функция для генерации Expression (Relation { ( and | or | xor ) Relation })
+   llvm::Value* generateExpression(
+    const Expression* expr,
+    std::unordered_map<std::string, llvm::Value*>& localVars,
+    const std::set<std::string>& param_names
+) {
+    if (expr->relations.empty()) {
+        llvm::errs() << "Error: Expression contains no Relations.\n";
+        return nullptr;
+    }
+
+    llvm::Value* result = generateRelation(dynamic_cast<Relation*>(expr->relations[0].get()), localVars, param_names);
+    if (!result) {
+        llvm::errs() << "Error: Failed to generate first Relation in Expression.\n";
+        return nullptr;
+    }
+
+    // Итерируемся по оставшимся Relations и операторам
+    for (size_t i = 1; i < expr->relations.size(); ++i) {
+        if (i - 1 >= expr->operators.size()) {
+            llvm::errs() << "Error: Not enough operators in Expression.\n";
+            break;
+        }
+
+        std::string op = expr->operators[i - 1];
+        llvm::Value* rhs = generateRelation(dynamic_cast<Relation*>(expr->relations[i].get()), localVars, param_names);
+        if (!rhs) {
+            llvm::errs() << "Error: Failed to generate Relation at index " << i << " in Expression.\n";
+            return nullptr;
+        }
+
+        // Приведение к типу i1
+        if (!result->getType()->isIntegerTy(1)) {
+            result = builder.CreateICmpNE(result, llvm::ConstantInt::get(result->getType(), 0), "cond");
+        }
+        if (!rhs->getType()->isIntegerTy(1)) {
+            rhs = builder.CreateICmpNE(rhs, llvm::ConstantInt::get(rhs->getType(), 0), "cond");
+        }
+
+        // Применяем операторы
+        if (op == "and") {
+            result = builder.CreateAnd(result, rhs, "andtmp_expression");
+        } else if (op == "or") {
+            result = builder.CreateOr(result, rhs, "ortmp_expression");
+        } else if (op == "xor") {
+            result = builder.CreateXor(result, rhs, "xortmp_expression");
+        } else {
+            llvm::errs() << "Error: Unsupported Expression operator '" << op << "'.\n";
+            return nullptr;
+        }
+    }
+
+    return result;
+}
+
 
     // Функция для генерации Relation (Simple [ ( < | <= | > | >= | = | /= ) Simple ])
     llvm::Value* generateRelation(
@@ -448,6 +649,7 @@ private:
             if (identifier) {
                 // Очистка имени идентификатора
                 std::string name = sanitizeName(identifier->name);
+                llvm::outs() << "Generating Primary for identifier: " << name << "\n";
 
                 llvm::Value* var = nullptr;
                 // Проверка локальных переменных
@@ -461,7 +663,9 @@ private:
 
                     if (auto allocaInst = llvm::dyn_cast<llvm::AllocaInst>(var)) {
                         llvm::Type* varType = allocaInst->getAllocatedType();
-                        return builder.CreateLoad(varType, var, name);
+                        llvm::Value* loadedVal = builder.CreateLoad(varType, var, name);
+                        llvm::outs() << "Loaded value from variable: " << name << "\n";
+                        return loadedVal;
                     }
                     else {
                         llvm::errs() << "Error: Variable " << name << " is not an AllocaInst.\n";
@@ -473,6 +677,7 @@ private:
                     llvm::Function* function = builder.GetInsertBlock()->getParent();
                     for (auto& arg : function->args()) {
                         if (arg.getName() == name) {
+                            llvm::outs() << "Accessing parameter: " << name << "\n";
                             return &arg; // Возвращаем аргумент напрямую
                         }
                     }
@@ -480,8 +685,27 @@ private:
                     return nullptr;
                 }
                 else {
-                    llvm::errs() << "Error: Variable " << name << " not found in localVars or parameters.\n";
-                    return nullptr;
+                    // Обработка булевых констант
+                    if (name == "true") {
+                        llvm::outs() << "Generating boolean constant: true\n";
+                        return llvm::ConstantInt::get(builder.getInt1Ty(), 1);
+                    }
+                    else if (name == "false") {
+                        llvm::outs() << "Generating boolean constant: false\n";
+                        return llvm::ConstantInt::get(builder.getInt1Ty(), 0);
+                    }
+                    // Попытка преобразовать имя в число (предполагая, что числовые литералы представлены как идентификаторы)
+                    try {
+                        int intValue = std::stoi(name);
+                        llvm::outs() << "Generating integer constant: " << intValue << "\n";
+                        return llvm::ConstantInt::get(builder.getInt32Ty(), intValue, true);
+                    } catch (const std::invalid_argument& e) {
+                        llvm::errs() << "Error: Undefined variable or invalid integer literal '" << name << "'.\n";
+                        return nullptr;
+                    } catch (const std::out_of_range& e) {
+                        llvm::errs() << "Error: Number out of range '" << name << "'.\n";
+                        return nullptr;
+                    }
                 }
             }
         }

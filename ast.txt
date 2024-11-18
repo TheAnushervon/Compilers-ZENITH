@@ -1,0 +1,67 @@
+Program:
+    RoutineDeclaration:
+        Identifier:
+          sum
+
+        Parameters:
+            ParameterDeclaration:
+              Parameter:
+                Identifier:
+                  a
+                                Type:
+                    PrimitiveType:
+                      integer
+            ParameterDeclaration:
+              Parameter:
+                Identifier:
+                  b
+                                Type:
+                    PrimitiveType:
+                      intege
+
+    Expected return type:         Type:
+            PrimitiveType:
+              integer
+
+        Body:
+            SimpleDeclaration:
+                VariableDeclaration:
+                    Identifier:
+                      s
+                    Type:
+                        PrimitiveType:
+                          integer
+                    Expression:
+                        Relation:
+                            Simple:
+                                Factor:
+                                    Summand:
+                                        Primary:
+                                            ModifiablePrimary:
+                                                Identifier:
+                                                  a
+
+
+                                Operator: +
+                                Factor:
+                                    Summand:
+                                        Primary:
+                                            ModifiablePrimary:
+                                                Identifier:
+                                                  b
+
+
+            ReturnType:
+                Expression:
+                    Relation:
+                        Simple:
+                            Factor:
+                                Summand:
+                                    Primary:
+                                        ModifiablePrimary:
+                                            Identifier:
+                                              s
+
+
+
+
