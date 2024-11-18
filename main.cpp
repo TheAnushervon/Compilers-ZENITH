@@ -16,6 +16,8 @@ std::string toString(TokenType token) {
         return "tk_routine";
     case TokenType::tk_type:
         return "tk_type";
+    case TokenType::tk_print:
+        return "tk_print";
     case TokenType::tk_is:
         return "tk_is";
     case TokenType::tk_var:

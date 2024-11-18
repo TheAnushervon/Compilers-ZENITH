@@ -143,6 +143,9 @@ inline TokenType Handler::determine_tk(const std::string &tk) {
     if (tk == "return") {
         return TokenType::tk_return;
     }
+    if (tk == "print") {
+        return TokenType::tk_print;
+    }
     if (tk == "integer")
         return TokenType::tk_integer;
     if (tk == "boolean")

@@ -36,6 +36,8 @@
 #include "nodes/modifiable_primary.h"
 #include "nodes/if_statement.h"
 #include "nodes/assignment.h"
+#include "nodes/routine_call.h"
+
 
 class IRGenerator {
 public:
@@ -46,7 +48,9 @@ public:
 
     IRGenerator() : builder(context) {
         module = std::make_unique<llvm::Module>("MyProgram", context);
+        declarePrintFunctions(); // Объявляем функции печати
     }
+
 
     // Основная функция генерации программы
     void generateProgram(Node* node) {
@@ -55,6 +59,17 @@ public:
             llvm::errs() << "Error: Node is not a Program.\n";
             return;
         }
+
+        // Обрабатываем глобальные переменные
+        for (const auto& simpleDecl : program->simpleDeclarations) {
+            if (auto curr = dynamic_cast<SimpleDeclaration*>(simpleDecl.get())) {
+                if (auto varDecl = dynamic_cast<VariableDeclaration*>(curr->child.get())) {
+                    generateVariableDeclaration(varDecl);
+                }
+            }
+        }
+
+        // Парсим рутины
         for (const auto& routine : program->routineDeclarations) {
             auto routineDecl = dynamic_cast<RoutineDeclaration*>(routine.get());
             if (routineDecl) {
@@ -63,9 +78,238 @@ public:
                 llvm::errs() << "Error: Routine is not a RoutineDeclaration.\n";
             }
         }
+
+        // Генерация main для обработки глобальных переменных и вызовов
+        if (!program->simpleDeclarations.empty()) {
+            generateMain(program);
+        }
+
+        // Сохраняем IR в файл
+        std::string moduleStr;
+        llvm::raw_string_ostream rso(moduleStr);
+        module->print(rso, nullptr);
+
+        std::ofstream astFile("llvm_code.txt");
+        if (astFile.is_open()) {
+            astFile << rso.str();
+            astFile.close();
+        } else {
+            std::cerr << "Failed to open file llvm_code.txt for writing." << std::endl;
+        }
+        std::ofstream outFile("generated_code.ll");
+        outFile << rso.str();
+        outFile.close();
     }
 
 private:
+    //генерация симплов
+    std::unordered_map<std::string, llvm::Value*> globalVars;
+
+   void generateMain(const Program* program) {
+    llvm::FunctionType* mainType = llvm::FunctionType::get(builder.getInt32Ty(), false);
+    llvm::Function* mainFunc = llvm::Function::Create(
+        mainType, llvm::Function::ExternalLinkage, "main", module.get());
+
+    llvm::BasicBlock* entryBlock = llvm::BasicBlock::Create(context, "entry", mainFunc);
+    builder.SetInsertPoint(entryBlock);
+
+    // Создаём локальный кэш для загруженных значений глобальных переменных
+    std::unordered_map<std::string, llvm::Value*> localVars;
+
+    // Загружаем глобальные переменные
+    for (const auto& simpleDecl : program->simpleDeclarations) {
+        if (auto curr = dynamic_cast<SimpleDeclaration*>(simpleDecl.get())) {
+            if (auto varDecl = dynamic_cast<VariableDeclaration*>(curr->child.get())) {
+                std::string varName = dynamic_cast<Identifier*>(varDecl->identifier.get())->name;
+                if (globalVars.find(varName) != globalVars.end()) {
+                    auto globalVar = llvm::dyn_cast<llvm::GlobalVariable>(globalVars[varName]);
+                    if (!globalVar) continue;
+
+                    // Загружаем значение глобальной переменной и сохраняем в локальный кэш
+                    llvm::Value* loadedValue = builder.CreateLoad(globalVar->getValueType(), globalVar, varName);
+                    localVars[varName] = loadedValue;
+                }
+            }
+        }
+    }
+
+    // Генерация вызовов функций и обработка Print
+    for (const auto& simpleDecl : program->simpleDeclarations) {
+        if (auto routineCall = dynamic_cast<RoutineCall*>(simpleDecl.get())) {
+                generateRoutineCall(routineCall, localVars);
+            }
+
+        else if (auto printNode = dynamic_cast<Print*>(simpleDecl.get())) {
+            generatePrint(printNode, localVars);
+        }
+    }
+
+    // Завершаем main возвратом 0
+    builder.CreateRet(llvm::ConstantInt::get(builder.getInt32Ty(), 0));
+    llvm::outs() << "Main function generated.\n";
+}
+
+void generatePrint(const Print* printNode, std::unordered_map<std::string, llvm::Value*>& localVars) {
+    llvm::Value* valueToPrint = nullptr;
+
+    // Если внутри Print находится RoutineCall
+    if (auto routineCall = dynamic_cast<RoutineCall*>(printNode->child.get())) {
+        llvm::outs() << "Generating Print for RoutineCall...\n";
+        valueToPrint = generateRoutineCall(routineCall, localVars);
+    }
+    // Если внутри Print находится Identifier
+    else if (auto identifier = dynamic_cast<Identifier*>(printNode->child.get())) {
+        std::string varName = sanitizeName(identifier->name);
+        llvm::outs() << "Generating Print for Identifier: " << varName << "\n";
+
+        // Проверяем локальные переменные
+        if (localVars.find(varName) != localVars.end()) {
+            valueToPrint = localVars[varName];
+        }
+        // Проверяем глобальные переменные
+        else if (globalVars.find(varName) != globalVars.end()) {
+            auto globalVar = llvm::dyn_cast<llvm::GlobalVariable>(globalVars[varName]);
+            if (!globalVar) {
+                llvm::errs() << "Error: '" << varName << "' is not a GlobalVariable.\n";
+                return;
+            }
+            valueToPrint = builder.CreateLoad(globalVar->getValueType(), globalVar, varName);
+        } else {
+            llvm::errs() << "Error: Variable '" << varName << "' not found.\n";
+            return;
+        }
+    } else {
+        llvm::errs() << "Error: Print node contains unsupported child type.\n";
+        return;
+    }
+
+    if (!valueToPrint) {
+        llvm::errs() << "Error: Failed to generate value for Print.\n";
+        return;
+    }
+
+    // Генерация вызова функции Print в зависимости от типа
+    if (valueToPrint->getType()->isIntegerTy()) {
+        llvm::Function* printFunc = module->getFunction("PrintInt");
+        if (!printFunc) {
+            llvm::errs() << "Error: PrintInt function not found in module.\n";
+            return;
+        }
+        builder.CreateCall(printFunc, {valueToPrint});
+    } else if (valueToPrint->getType()->isDoubleTy()) {
+        llvm::Function* printFunc = module->getFunction("PrintReal");
+        if (!printFunc) {
+            llvm::errs() << "Error: PrintReal function not found in module.\n";
+            return;
+        }
+        builder.CreateCall(printFunc, {valueToPrint});
+    } else if (valueToPrint->getType()->isIntegerTy(1)) { // Boolean
+        llvm::Function* printFunc = module->getFunction("PrintBoolean");
+        if (!printFunc) {
+            llvm::errs() << "Error: PrintBoolean function not found in module.\n";
+            return;
+        }
+        builder.CreateCall(printFunc, {valueToPrint});
+    } else {
+        llvm::errs() << "Error: Unsupported type for Print.\n";
+    }
+}
+
+
+
+
+llvm::Value* generateRoutineCall(const RoutineCall* routineCall, const std::unordered_map<std::string, llvm::Value*>& localVars) {
+    auto identifier = dynamic_cast<Identifier*>(routineCall->identifier.get());
+    if (!identifier) {
+        llvm::errs() << "Error: RoutineCall identifier is not valid.\n";
+        return nullptr;
+    }
+
+    std::string functionName = sanitizeName(identifier->name);
+
+    llvm::Function* function = module->getFunction(functionName);
+    if (!function) {
+        llvm::errs() << "Error: Function '" << functionName << "' not found in module.\n";
+        return nullptr;
+    }
+
+    std::vector<llvm::Value*> args;
+    auto paramIt = function->args().begin();
+
+    for (const auto& expr : routineCall->expressions) {
+        auto expression = dynamic_cast<Expression*>(expr.get());
+        if (!expression || expression->relations.empty()) {
+            llvm::errs() << "Error: RoutineCall contains an invalid argument.\n";
+            return nullptr;
+        }
+
+        auto relation = dynamic_cast<Relation*>(expression->relations[0].get());
+        auto simple = dynamic_cast<Simple*>(relation->simples[0].get());
+        auto factor = dynamic_cast<Factor*>(simple->factors[0].get());
+        auto summand = dynamic_cast<Summand*>(factor->summands[0].get());
+        auto primary = dynamic_cast<Primary*>(summand->child.get());
+        auto modifiablePrimary = dynamic_cast<ModifiablePrimary*>(primary->child.get());
+        auto argIdentifier = dynamic_cast<Identifier*>(modifiablePrimary->identifier.get());
+        std::string argName = sanitizeName(argIdentifier->name);
+
+        // Используем локальный кэш, если значение переменной уже загружено
+        if (localVars.find(argName) != localVars.end()) {
+            args.push_back(localVars.at(argName));
+        } else {
+            llvm::errs() << "Error: Variable '" << argName << "' not found in localVars.\n";
+            return nullptr;
+        }
+
+        ++paramIt;
+    }
+
+    return builder.CreateCall(function, args, "calltmp_routine");
+}
+
+
+    void generateVariableDeclaration(const VariableDeclaration* varDecl) {
+        auto identifier = dynamic_cast<Identifier*>(varDecl->identifier.get());
+        if (!identifier) return;
+
+        std::string varName = identifier->name;
+
+        // Определение типа переменной
+        auto typeNode = dynamic_cast<Type*>(varDecl->type.get());
+        if (!typeNode || !typeNode->child) {
+            llvm::errs() << "Error: VariableDeclaration without Type or child.\n";
+            return;
+        }
+
+        llvm::Type* llvmType = mapType(typeNode->child.get());
+        if (!llvmType) {
+            llvm::errs() << "Error: Failed to map type for variable: " << varName << "\n";
+            return;
+        }
+
+        // Создание начального значения
+        llvm::Constant* initializer = llvm::Constant::getNullValue(llvmType);
+        if (varDecl->expression) {
+            auto expr = dynamic_cast<Expression*>(varDecl->expression.get());
+            if (expr) {
+                llvm::Value* value = generateExpression(expr, globalVars, {});
+                initializer = llvm::dyn_cast<llvm::Constant>(value);
+                if (!initializer) {
+                    llvm::errs() << "Error: Failed to generate initializer for variable: " << varName << "\n";
+                    return;
+                }
+            }
+        }
+
+        // Создание глобальной переменной
+        llvm::GlobalVariable* globalVar = new llvm::GlobalVariable(
+            *module, llvmType, false, llvm::GlobalValue::ExternalLinkage,
+            initializer, varName);
+
+        globalVars[varName] = globalVar;
+    }
+
+
+
     // Генерация функции (рутины)
     void generateRoutine(const RoutineDeclaration* routine) {
         // 1. Извлечение возвращаемого типа
@@ -639,79 +883,84 @@ private:
     }
 
     // Функция для генерации Primary
-    llvm::Value* generatePrimary(
-        const Primary* primary,
-        std::unordered_map<std::string, llvm::Value*>& localVars,
-        const std::set<std::string>& param_names)
-    {
-        if (auto modifiable = dynamic_cast<ModifiablePrimary*>(primary->child.get())) {
-            auto identifier = dynamic_cast<Identifier*>(modifiable->identifier.get());
-            if (identifier) {
-                // Очистка имени идентификатора
-                std::string name = sanitizeName(identifier->name);
-                llvm::outs() << "Generating Primary for identifier: " << name << "\n";
+   llvm::Value* generatePrimary(
+    const Primary* primary,
+    std::unordered_map<std::string, llvm::Value*>& localVars,
+    const std::set<std::string>& param_names)
+{
+    // Обработка узла литерала
+    if (auto literal = dynamic_cast<LiteralPrimary*>(primary->child.get())) {
+        switch (literal->type) {
+            case LiteralPrimary::LiteralType::Integer: {
+                llvm::outs() << "Generating integer literal: " << literal->intValue << "\n";
+                return llvm::ConstantInt::get(builder.getInt32Ty(), literal->intValue, true);
+            }
+            case LiteralPrimary::LiteralType::Real: {
+                llvm::outs() << "Generating real literal: " << literal->realValue << "\n";
+                return llvm::ConstantFP::get(builder.getDoubleTy(), literal->realValue);
+            }
+            case LiteralPrimary::LiteralType::Boolean: {
+                llvm::outs() << "Generating boolean literal: " << (literal->boolValue ? "true" : "false") << "\n";
+                return llvm::ConstantInt::get(builder.getInt1Ty(), literal->boolValue);
+            }
+            default:
+                llvm::errs() << "Error: Unsupported literal type.\n";
+                return nullptr;
+        }
+    }
 
-                llvm::Value* var = nullptr;
-                // Проверка локальных переменных
-                auto it = localVars.find(name);
-                if (it != localVars.end()) {
-                    var = it->second;
-                    if (!var) {
-                        llvm::errs() << "Error: Variable " << name << " in localVars is nullptr.\n";
-                        return nullptr;
-                    }
+    // Обработка модифицируемого узла
+    if (auto modifiable = dynamic_cast<ModifiablePrimary*>(primary->child.get())) {
+        auto identifier = dynamic_cast<Identifier*>(modifiable->identifier.get());
+        if (identifier) {
+            // Очистка имени идентификатора
+            std::string name = sanitizeName(identifier->name);
+            llvm::outs() << "Generating Primary for identifier: " << name << "\n";
 
-                    if (auto allocaInst = llvm::dyn_cast<llvm::AllocaInst>(var)) {
-                        llvm::Type* varType = allocaInst->getAllocatedType();
-                        llvm::Value* loadedVal = builder.CreateLoad(varType, var, name);
-                        llvm::outs() << "Loaded value from variable: " << name << "\n";
-                        return loadedVal;
-                    }
-                    else {
-                        llvm::errs() << "Error: Variable " << name << " is not an AllocaInst.\n";
-                        return nullptr;
-                    }
-                }
-                // Проверка параметров функции
-                else if (param_names.find(name) != param_names.end()) {
-                    llvm::Function* function = builder.GetInsertBlock()->getParent();
-                    for (auto& arg : function->args()) {
-                        if (arg.getName() == name) {
-                            llvm::outs() << "Accessing parameter: " << name << "\n";
-                            return &arg; // Возвращаем аргумент напрямую
-                        }
-                    }
-                    llvm::errs() << "Error: Parameter " << name << " not found in function arguments.\n";
+            llvm::Value* var = nullptr;
+            // Проверка локальных переменных
+            auto it = localVars.find(name);
+            if (it != localVars.end()) {
+                var = it->second;
+                if (!var) {
+                    llvm::errs() << "Error: Variable " << name << " in localVars is nullptr.\n";
                     return nullptr;
                 }
+
+                if (auto allocaInst = llvm::dyn_cast<llvm::AllocaInst>(var)) {
+                    llvm::Type* varType = allocaInst->getAllocatedType();
+                    llvm::Value* loadedVal = builder.CreateLoad(varType, var, name);
+                    llvm::outs() << "Loaded value from variable: " << name << "\n";
+                    return loadedVal;
+                }
                 else {
-                    // Обработка булевых констант
-                    if (name == "true") {
-                        llvm::outs() << "Generating boolean constant: true\n";
-                        return llvm::ConstantInt::get(builder.getInt1Ty(), 1);
-                    }
-                    else if (name == "false") {
-                        llvm::outs() << "Generating boolean constant: false\n";
-                        return llvm::ConstantInt::get(builder.getInt1Ty(), 0);
-                    }
-                    // Попытка преобразовать имя в число (предполагая, что числовые литералы представлены как идентификаторы)
-                    try {
-                        int intValue = std::stoi(name);
-                        llvm::outs() << "Generating integer constant: " << intValue << "\n";
-                        return llvm::ConstantInt::get(builder.getInt32Ty(), intValue, true);
-                    } catch (const std::invalid_argument& e) {
-                        llvm::errs() << "Error: Undefined variable or invalid integer literal '" << name << "'.\n";
-                        return nullptr;
-                    } catch (const std::out_of_range& e) {
-                        llvm::errs() << "Error: Number out of range '" << name << "'.\n";
-                        return nullptr;
-                    }
+                    llvm::errs() << "Error: Variable " << name << " is not an AllocaInst.\n";
+                    return nullptr;
                 }
             }
+            // Проверка параметров функции
+            else if (param_names.find(name) != param_names.end()) {
+                llvm::Function* function = builder.GetInsertBlock()->getParent();
+                for (auto& arg : function->args()) {
+                    if (arg.getName() == name) {
+                        llvm::outs() << "Accessing parameter: " << name << "\n";
+                        return &arg; // Возвращаем аргумент напрямую
+                    }
+                }
+                llvm::errs() << "Error: Parameter " << name << " not found in function arguments.\n";
+                return nullptr;
+            }
+            else {
+                llvm::errs() << "Error: Undefined variable or identifier '" << name << "'.\n";
+                return nullptr;
+            }
         }
-        llvm::errs() << "Error: Primary node processing failed.\n";
-        return nullptr;
     }
+
+    llvm::errs() << "Error: Primary node processing failed.\n";
+    return nullptr;
+}
+
 
     // Функция для парсинга параметров
     void parseParameters(
@@ -770,6 +1019,23 @@ private:
             [](char c) { return !std::isalnum(c); }), sanitized.end());
         return sanitized;
     }
+    void declarePrintFunctions() {
+       // PrintInt
+       llvm::FunctionType* printIntType = llvm::FunctionType::get(
+           builder.getVoidTy(), {builder.getInt32Ty()}, false);
+       llvm::Function::Create(printIntType, llvm::Function::ExternalLinkage, "PrintInt", module.get());
+
+       // PrintReal
+       llvm::FunctionType* printRealType = llvm::FunctionType::get(
+           builder.getVoidTy(), {builder.getDoubleTy()}, false);
+       llvm::Function::Create(printRealType, llvm::Function::ExternalLinkage, "PrintReal", module.get());
+
+       // PrintBoolean
+       llvm::FunctionType* printBooleanType = llvm::FunctionType::get(
+           builder.getVoidTy(), {builder.getInt1Ty()}, false);
+       llvm::Function::Create(printBooleanType, llvm::Function::ExternalLinkage, "PrintBoolean", module.get());
+   }
+
 };
 
 #endif // IRGENERATOR_H

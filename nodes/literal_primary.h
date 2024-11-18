@@ -24,14 +24,16 @@ public:
 
     std::string ToString(int counter) const override {
         std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
+        std::string ots1(counter * 2+4, ' '); // Отступы с учетом уровня вложенности
+
 
         switch (type) {
             case LiteralType::Integer:
-                return ots + "Integer: " + std::to_string(intValue);
+                return ots + "LiteralPrimary\n" + ots1 + "Integer: " + std::to_string(intValue);
             case LiteralType::Real:
-                return ots + "Real: " + std::to_string(realValue);
+                return ots + "LiteralPrimary\n"+ ots1 + "Real: " + std::to_string(realValue);
             case LiteralType::Boolean:
-                return ots + "Boolean: " + (boolValue ? "true" : "false");
+                return ots + "LiteralPrimary\n" + ots1 +"Boolean: " + (boolValue ? "true" : "false");
         }
         return ""; 
     }

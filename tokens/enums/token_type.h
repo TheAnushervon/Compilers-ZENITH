@@ -57,6 +57,7 @@ enum class TokenType {
     tk_identifier,
     tk_terminate,
 
+    tk_print,
     tk_return
 };
 #endif // TOKEN_TYPE_H

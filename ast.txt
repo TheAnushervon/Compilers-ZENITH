@@ -12,7 +12,8 @@ Program:
                         Factor:
                             Summand:
                                 Primary:
-                                    Integer: 5
+                                    LiteralPrimary
+                                        Integer: 5
     SimpleDeclaration:
         VariableDeclaration:
             Identifier:
@@ -26,30 +27,101 @@ Program:
                         Factor:
                             Summand:
                                 Primary:
-                                    Integer: 6
-    RoutineCall:
+                                    LiteralPrimary
+                                        Integer: 6
+    SimpleDeclaration:
+        VariableDeclaration:
+            Identifier:
+              ans
+            Type:
+                PrimitiveType:
+                  integer
+            Expression:
+                Relation:
+                    Simple:
+                        Factor:
+                            Summand:
+                                Primary:
+                                    LiteralPrimary
+                                        Integer: 99
+  Print:
+        RoutineCall:
+            Identifier:
+              sum
+            Expression:
+                Relation:
+                    Simple:
+                        Factor:
+                            Summand:
+                                Primary:
+                                    ModifiablePrimary:
+                                        Identifier:
+                                          first
+
+            Expression:
+                Relation:
+                    Simple:
+                        Factor:
+                            Summand:
+                                Primary:
+                                    ModifiablePrimary:
+                                        Identifier:
+                                          second
+
+
+  Print:
+        RoutineCall:
+            Identifier:
+              comparator
+            Expression:
+                Relation:
+                    Simple:
+                        Factor:
+                            Summand:
+                                Primary:
+                                    ModifiablePrimary:
+                                        Identifier:
+                                          first
+
+            Expression:
+                Relation:
+                    Simple:
+                        Factor:
+                            Summand:
+                                Primary:
+                                    ModifiablePrimary:
+                                        Identifier:
+                                          second
+
+
+  Print:
+        RoutineCall:
+            Identifier:
+              first_more_second
+            Expression:
+                Relation:
+                    Simple:
+                        Factor:
+                            Summand:
+                                Primary:
+                                    ModifiablePrimary:
+                                        Identifier:
+                                          first
+
+            Expression:
+                Relation:
+                    Simple:
+                        Factor:
+                            Summand:
+                                Primary:
+                                    ModifiablePrimary:
+                                        Identifier:
+                                          second
+
+
+  Print:
         Identifier:
-          sum
-        Expression:
-            Relation:
-                Simple:
-                    Factor:
-                        Summand:
-                            Primary:
-                                ModifiablePrimary:
-                                    Identifier:
-                                      first
-
-        Expression:
-            Relation:
-                Simple:
-                    Factor:
-                        Summand:
-                            Primary:
-                                ModifiablePrimary:
-                                    Identifier:
-                                      second
-
+          ans
 
     RoutineDeclaration:
         Identifier:
@@ -113,6 +185,169 @@ Program:
                                         ModifiablePrimary:
                                             Identifier:
                                               s
+
+
+
+    RoutineDeclaration:
+        Identifier:
+          first_more_second
+
+        Parameters:
+            ParameterDeclaration:
+              Parameter:
+                Identifier:
+                  a
+                                Type:
+                    PrimitiveType:
+                      integer
+            ParameterDeclaration:
+              Parameter:
+                Identifier:
+                  b
+                                Type:
+                    PrimitiveType:
+                      intege
+
+    Expected return type:         Type:
+            PrimitiveType:
+              boolean
+
+        Body:
+            SimpleDeclaration:
+                VariableDeclaration:
+                    Identifier:
+                      ans
+                    Type:
+                        PrimitiveType:
+                          boolean
+                    Expression:
+                        Relation:
+                            Simple:
+                                Factor:
+                                    Summand:
+                                        Primary:
+                                            ModifiablePrimary:
+                                                Identifier:
+                                                  a
+
+
+                            Operator: >
+                            Simple:
+                                Factor:
+                                    Summand:
+                                        Primary:
+                                            ModifiablePrimary:
+                                                Identifier:
+                                                  b
+
+
+            ReturnType:
+                Expression:
+                    Relation:
+                        Simple:
+                            Factor:
+                                Summand:
+                                    Primary:
+                                        ModifiablePrimary:
+                                            Identifier:
+                                              ans
+
+
+
+    RoutineDeclaration:
+        Identifier:
+          comparator
+
+        Parameters:
+            ParameterDeclaration:
+              Parameter:
+                Identifier:
+                  a
+                                Type:
+                    PrimitiveType:
+                      integer
+            ParameterDeclaration:
+              Parameter:
+                Identifier:
+                  b
+                                Type:
+                    PrimitiveType:
+                      intege
+
+    Expected return type:         Type:
+            PrimitiveType:
+              integer
+
+        Body:
+            SimpleDeclaration:
+                VariableDeclaration:
+                    Identifier:
+                      max
+                    Type:
+                        PrimitiveType:
+                          integer
+                    Expression:
+                        Relation:
+                            Simple:
+                                Factor:
+                                    Summand:
+                                        Primary:
+                                            ModifiablePrimary:
+                                                Identifier:
+                                                  b
+
+
+            Statement:
+              IfStatement:
+                  Expression:
+                      Relation:
+                          Simple:
+                              Factor:
+                                  Summand:
+                                      Primary:
+                                          ModifiablePrimary:
+                                              Identifier:
+                                                a
+
+
+                          Operator: >
+                          Simple:
+                              Factor:
+                                  Summand:
+                                      Primary:
+                                          ModifiablePrimary:
+                                              Identifier:
+                                                b
+
+                  Body:
+                      Statement:
+                        Assignment:
+                            ModifiablePrimary:
+                                Identifier:
+                                  max
+
+                            Expression:
+                                Relation:
+                                    Simple:
+                                        Factor:
+                                            Summand:
+                                                Primary:
+                                                    ModifiablePrimary:
+                                                        Identifier:
+                                                          a
+
+
+
+            ReturnType:
+                Expression:
+                    Relation:
+                        Simple:
+                            Factor:
+                                Summand:
+                                    Primary:
+                                        ModifiablePrimary:
+                                            Identifier:
+                                              max
 
 
 
