@@ -2,3 +2,9 @@ routine sum(a: integer, b: integer) : integer is
     var s : integer is a + b
     return s
 end
+
+var first : integer is 5
+
+var second : integer is 6
+
+sum(first, second)

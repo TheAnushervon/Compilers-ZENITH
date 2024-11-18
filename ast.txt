@@ -1,4 +1,56 @@
 Program:
+    SimpleDeclaration:
+        VariableDeclaration:
+            Identifier:
+              first
+            Type:
+                PrimitiveType:
+                  integer
+            Expression:
+                Relation:
+                    Simple:
+                        Factor:
+                            Summand:
+                                Primary:
+                                    Integer: 5
+    SimpleDeclaration:
+        VariableDeclaration:
+            Identifier:
+              second
+            Type:
+                PrimitiveType:
+                  integer
+            Expression:
+                Relation:
+                    Simple:
+                        Factor:
+                            Summand:
+                                Primary:
+                                    Integer: 6
+    RoutineCall:
+        Identifier:
+          sum
+        Expression:
+            Relation:
+                Simple:
+                    Factor:
+                        Summand:
+                            Primary:
+                                ModifiablePrimary:
+                                    Identifier:
+                                      first
+
+        Expression:
+            Relation:
+                Simple:
+                    Factor:
+                        Summand:
+                            Primary:
+                                ModifiablePrimary:
+                                    Identifier:
+                                      second
+
+
     RoutineDeclaration:
         Identifier:
           sum
