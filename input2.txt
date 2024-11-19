@@ -16,3 +16,13 @@ routine comparator(a: integer, b: integer ) : integer is
     return max
 end
 
+
+
+
+var first : integer is 5
+var second : integer is 6
+var ans : integer is 99
+print ( sum(first, second) )
+print( comparator(first, second))
+print(first_more_second(first,second))
+print(ans)

@@ -9,7 +9,7 @@ public:
     std::shared_ptr<Node> identifier;
     std::shared_ptr<Node> range;
     std::shared_ptr<Node> body;
-    bool isReverse; 
+    bool isReverse; //на это не обращай внимание пока
 
     ForLoop(std::shared_ptr<Node> id, std::shared_ptr<Node> rng, std::shared_ptr<Node> bdy, bool reverse = false)
         : identifier(id), range(rng), body(bdy), isReverse(reverse) {}
@@ -29,9 +29,9 @@ public:
             result += ots + "  (reverse)\n";
         }
 
-        result += ots + "  Identifier:\n" + identifier->ToString(counter + 2) + "\n";
-        result += ots + "  Range:\n" + range->ToString(counter + 2) + "\n";
-        result += ots + "  Body:\n" + body->ToString(counter + 2);
+        result +=   identifier->ToString(counter + 2) + "\n";
+        result += range->ToString(counter + 2) + "\n";
+        result +=  body->ToString(counter + 2);
 
         return result;
     }
