@@ -1,6 +1,3 @@
-#ifndef IRGENERATOR_H
-#define IRGENERATOR_H
-
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
@@ -51,8 +48,6 @@ public:
         declarePrintFunctions(); // Объявляем функции печати
     }
 
-
-    // Основная функция генерации программы
     void generateProgram(Node* node) {
         auto program = dynamic_cast<Program*>(node);
         if (!program) {
@@ -215,9 +210,6 @@ void generatePrint(const Print* printNode, std::unordered_map<std::string, llvm:
     }
 }
 
-
-
-
 llvm::Value* generateRoutineCall(const RoutineCall* routineCall, const std::unordered_map<std::string, llvm::Value*>& localVars) {
     auto identifier = dynamic_cast<Identifier*>(routineCall->identifier.get());
     if (!identifier) {
@@ -308,8 +300,6 @@ llvm::Value* generateRoutineCall(const RoutineCall* routineCall, const std::unor
         globalVars[varName] = globalVar;
     }
 
-
-
     // Генерация функции (рутины)
     void generateRoutine(const RoutineDeclaration* routine) {
         // 1. Извлечение возвращаемого типа
@@ -382,7 +372,6 @@ llvm::Value* generateRoutineCall(const RoutineCall* routineCall, const std::unor
         std::cout << "5 этап: ок\n";
 
         // 6. Обработка переменных и выражений
-        // Создание символической таблицы для локальных переменных
         std::unordered_map<std::string, llvm::Value*> localVars; // Объявление локальных переменных
 
         if (routine->body) {
@@ -438,6 +427,10 @@ llvm::Value* generateRoutineCall(const RoutineCall* routineCall, const std::unor
                 }
 
                 if (auto st = dynamic_cast<Statement*>(stmt.get())) {
+
+                    if (auto forStmt = dynamic_cast<ForLoop*>(st->child.get())) {
+                        generateForLoop(forStmt, localVars, param_names);
+                    }
                     // Обработка IfStatement
                     if (auto ifStmt = dynamic_cast<IfStatement*>(st->child.get())) {
                         generateIfStatement(ifStmt, localVars, param_names);
@@ -452,7 +445,6 @@ llvm::Value* generateRoutineCall(const RoutineCall* routineCall, const std::unor
                 // Генерация return
                 if (auto returnStmt = dynamic_cast<ReturnType*>(stmt.get())) {
                     // Проверяем, существует ли член 'expression' в ReturnType
-                    // Предполагается, что 'expression' является публичным членом класса ReturnType
                     auto expression = dynamic_cast<Expression*>(returnStmt->type.get());
                     if (expression && !expression->relations.empty()) {
                         llvm::Value* returnValue = generateExpression(expression, localVars, param_names);
@@ -478,7 +470,6 @@ llvm::Value* generateRoutineCall(const RoutineCall* routineCall, const std::unor
             llvm::errs() << "Function verification failed!\n";
         }
 
-        module->print(llvm::outs(), nullptr);
     }
 
     // Метод для генерации IfStatement
@@ -568,88 +559,87 @@ llvm::Value* generateRoutineCall(const RoutineCall* routineCall, const std::unor
     llvm::outs() << "Set insert point to merge block.\n";
 }
 
-
     // Метод для генерации Assignment (Присваивания)
     void generateAssignment(
         const Assignment* assignStmt,
         std::unordered_map<std::string, llvm::Value*>& localVars,
-        const std::set<std::string>& param_names
-    ) {
-        llvm::outs() << "Generating Assignment...\n";
+        const std::set<std::string>& param_names) {
 
-        // Получаем имя переменной
-        auto modifiable = dynamic_cast<ModifiablePrimary*>(assignStmt->modifiablePrimary.get());
-        if (!modifiable) {
-            llvm::errs() << "Error: Assignment does not contain ModifiablePrimary.\n";
-            return;
-        }
-        auto identifier = dynamic_cast<Identifier*>(modifiable->identifier.get());
-        if (!identifier) {
-            llvm::errs() << "Error: ModifiablePrimary does not contain Identifier.\n";
-            return;
-        }
+       llvm::outs() << "Generating Assignment...\n";
 
-        std::string varName = sanitizeName(identifier->name);
-        llvm::outs() << "Assigning to variable: " << varName << "\n";
+       auto modifiable = dynamic_cast<ModifiablePrimary*>(assignStmt->modifiablePrimary.get());
+       if (!modifiable) {
+           llvm::errs() << "Error: Assignment does not contain ModifiablePrimary.\n";
+           return;
+       }
+       auto identifier = dynamic_cast<Identifier*>(modifiable->identifier.get());
+       if (!identifier) {
+           llvm::errs() << "Error: ModifiablePrimary does not contain Identifier.\n";
+           return;
+       }
 
-        // Поиск переменной в локальных
-        auto it = localVars.find(varName);
-        if (it == localVars.end()) {
-            llvm::errs() << "Error: Variable " << varName << " not found.\n";
-            return;
-        }
+       std::string varName = sanitizeName(identifier->name);
+       llvm::outs() << "Assigning to variable: " << varName << "\n";
 
-        llvm::Value* varAlloca = it->second;
+       // Найти переменную в локальных переменных
+       auto it = localVars.find(varName);
+       if (it == localVars.end()) {
+           llvm::errs() << "Error: Variable " << varName << " not found.\n";
+           return;
+       }
 
-        // Генерация выражения для присваивания
-        auto exprNode = assignStmt->expression.get();
-        auto expression = dynamic_cast<Expression*>(exprNode);
-        if (!expression) {
-            llvm::errs() << "Error: Assignment expression is not of type Expression.\n";
-            return;
-        }
+       llvm::Value* varAlloca = it->second;
 
-        llvm::Value* exprValue = generateExpression(expression, localVars, param_names);
-        if (!exprValue) {
-            llvm::errs() << "Error: Failed to generate expression for assignment.\n";
-            return;
-        }
+       auto expression = dynamic_cast<Expression*>(assignStmt->expression.get());
+       if (!expression) {
+           llvm::errs() << "Error: Assignment expression is not valid.\n";
+           return;
+       }
 
-        // Создаём инструкцию store
-        builder.CreateStore(exprValue, varAlloca);
-        llvm::outs() << "Stored value in " << varName << "\n";
-    }
+       llvm::Value* exprValue = generateExpression(expression, localVars, param_names);
+       if (!exprValue) {
+           llvm::errs() << "Error: Failed to generate expression for assignment.\n";
+           return;
+       }
 
+       builder.CreateStore(exprValue, varAlloca);
+       llvm::outs() << "Assignment completed for variable: " << varName << "\n";
+   }
 
-
-
-
-    // Вспомогательный метод для генерации тела (Body) в блоках if
+    // Внутри метода generateBody добавьте обработку ForLoop
     void generateBody(
-     const Node* bodyNode,
-     std::unordered_map<std::string, llvm::Value*>& localVars,
-     const std::set<std::string>& param_names
- ) {
+        const Node* bodyNode,
+        std::unordered_map<std::string, llvm::Value*>& localVars,
+        const std::set<std::string>& param_names) {
 
-        auto body = dynamic_cast<const Body*>(bodyNode);
-        if (!body) {
-            llvm::errs() << "Error: Body is not of type Body.\n";
-            return;
-        }
+       auto body = dynamic_cast<const Body*>(bodyNode);
+       if (!body) {
+           llvm::errs() << "Error: Body is not of type Body.\n";
+           return;
+       }
 
-
-        for (const auto& stmt : body->statements) {
-            if (auto assignStmt = dynamic_cast<const Assignment*>(stmt.get())) {
-                generateAssignment(assignStmt, localVars, param_names);
-            }
-
-            if (auto ifStmt = dynamic_cast<const IfStatement*>(stmt.get())) {
-                generateIfStatement(ifStmt, localVars, param_names);
-            }
-        }
-    }
-
-
+       for (const auto& stmt : body->statements) {
+           // Обработка присваивания
+           if (auto assignStmt = dynamic_cast<const Assignment*>(stmt.get())) {
+               generateAssignment(assignStmt, localVars, param_names);
+           }
+           // Обработка вызовов функций
+           else if (auto routineCall = dynamic_cast<const RoutineCall*>(stmt.get())) {
+               generateRoutineCall(routineCall, localVars);
+           }
+           // Обработка вложенных циклов
+           else if (auto forLoop = dynamic_cast<const ForLoop*>(stmt.get())) {
+               generateForLoop(forLoop, localVars, param_names);
+           }
+           // Обработка условных операторов
+           else if (auto ifStmt = dynamic_cast<const IfStatement*>(stmt.get())) {
+               generateIfStatement(ifStmt, localVars, param_names);
+           }
+           else {
+               llvm::outs() << "Warning: Unhandled statement in body.\n";
+           }
+       }
+   }
     // Функция для генерации Expression (Relation { ( and | or | xor ) Relation })
    llvm::Value* generateExpression(
     const Expression* expr,
@@ -704,8 +694,6 @@ llvm::Value* generateRoutineCall(const RoutineCall* routineCall, const std::unor
 
     return result;
 }
-
-
     // Функция для генерации Relation (Simple [ ( < | <= | > | >= | = | /= ) Simple ])
     llvm::Value* generateRelation(
         const Relation* rel,
@@ -873,9 +861,10 @@ llvm::Value* generateRoutineCall(const RoutineCall* routineCall, const std::unor
     llvm::Value* generateSummand(
         const Summand* summand,
         std::unordered_map<std::string, llvm::Value*>& localVars,
+
         const std::set<std::string>& param_names)
     {
-        if (auto primary = dynamic_cast<Primary*>(summand->child.get())) {
+       if (auto primary = dynamic_cast<Primary*>(summand->child.get())) {
             return generatePrimary(primary, localVars, param_names);
         }
         llvm::errs() << "Error: Summand does not contain Primary.\n";
@@ -961,7 +950,6 @@ llvm::Value* generateRoutineCall(const RoutineCall* routineCall, const std::unor
     return nullptr;
 }
 
-
     // Функция для парсинга параметров
     void parseParameters(
         const RoutineDeclaration* routine,
@@ -1035,7 +1023,116 @@ llvm::Value* generateRoutineCall(const RoutineCall* routineCall, const std::unor
            builder.getVoidTy(), {builder.getInt1Ty()}, false);
        llvm::Function::Create(printBooleanType, llvm::Function::ExternalLinkage, "PrintBoolean", module.get());
    }
+    // Добавьте этот метод в приватную секцию класса IRGenerator
+void generateForLoop(
+    const ForLoop* forLoop,
+    std::unordered_map<std::string, llvm::Value*>& localVars,
+    const std::set<std::string>& param_names) {
 
+    llvm::outs() << "Generating ForLoop...\n";
+
+    // Генерация начального и конечного значений диапазона
+    llvm::Value* startVal = generateExpression(
+        dynamic_cast<Expression*>(dynamic_cast<Range*>(forLoop->range.get())->start.get()),
+        localVars, param_names);
+    llvm::Value* endVal = generateExpression(
+        dynamic_cast<Expression*>(dynamic_cast<Range*>(forLoop->range.get())->end.get()),
+        localVars, param_names);
+
+    if (!startVal || !endVal) {
+        llvm::errs() << "Error: Failed to generate range for ForLoop.\n";
+        return;
+    }
+
+    // Создание переменной цикла
+    llvm::Function* function = builder.GetInsertBlock()->getParent();
+    llvm::AllocaInst* loopVarAlloca = builder.CreateAlloca(builder.getInt32Ty(), nullptr, "i");
+    builder.CreateStore(startVal, loopVarAlloca);
+    llvm::outs() << "Loop variable 'i' allocated and initialized.\n";
+
+    // Добавляем переменную цикла в `localVars`
+    localVars["i"] = loopVarAlloca;
+
+    // Создание блоков цикла
+    llvm::BasicBlock* loopCondBB = llvm::BasicBlock::Create(context, "loopcond", function);
+    llvm::BasicBlock* loopBodyBB = llvm::BasicBlock::Create(context, "loopbody", function);
+    llvm::BasicBlock* loopEndBB = llvm::BasicBlock::Create(context, "loopend", function);
+
+    // Переход к блоку условия
+    builder.CreateBr(loopCondBB);
+
+    // Генерация условия
+    builder.SetInsertPoint(loopCondBB);
+    llvm::Value* currentVal = builder.CreateLoad(builder.getInt32Ty(), loopVarAlloca, "i");
+    llvm::outs() << "Current value of 'i': "; currentVal->print(llvm::outs()); llvm::outs() << "\n";
+    llvm::Value* cmp = builder.CreateICmpSLE(currentVal, endVal, "loopcmp");
+    llvm::outs() << "Loop comparison result: "; cmp->print(llvm::outs()); llvm::outs() << "\n";
+    builder.CreateCondBr(cmp, loopBodyBB, loopEndBB);
+
+    // Генерация тела цикла
+    builder.SetInsertPoint(loopBodyBB);
+    llvm::outs() << "Generating loop body...\n";
+
+    auto body = dynamic_cast<Body*>(forLoop->body.get());
+    if (!body) {
+        llvm::errs() << "Error: ForLoop body is invalid.\n";
+        return;
+    }
+
+    for (const auto& stmt : body->statements) {
+        if (auto statementNode = dynamic_cast<Statement*>(stmt.get())) {
+            auto childNode = statementNode->child.get();
+            if (auto assignStmt = dynamic_cast<Assignment*>(childNode)) {
+                llvm::outs() << "Processing Assignment in loop body.\n";
+
+                auto modifiable = dynamic_cast<ModifiablePrimary*>(assignStmt->modifiablePrimary.get());
+                auto expression = dynamic_cast<Expression*>(assignStmt->expression.get());
+
+                if (!modifiable || !expression) {
+                    llvm::errs() << "Error: Invalid Assignment in loop body.\n";
+                    continue;
+                }
+
+                auto identifier = dynamic_cast<Identifier*>(modifiable->identifier.get());
+                if (!identifier) {
+                    llvm::errs() << "Error: Invalid left-hand side in Assignment.\n";
+                    continue;
+                }
+
+                std::string varName = sanitizeName(identifier->name);
+                llvm::Value* targetVar = nullptr;
+
+                if (localVars.find(varName) != localVars.end()) {
+                    targetVar = localVars[varName];
+                } else {
+                    llvm::errs() << "Error: Variable " << varName << " not found in localVars.\n";
+                    continue;
+                }
+
+                llvm::Value* exprVal = generateExpression(expression, localVars, param_names);
+                if (!exprVal) {
+                    llvm::errs() << "Error: Failed to generate right-hand side of Assignment.\n";
+                    continue;
+                }
+
+                builder.CreateStore(exprVal, targetVar);
+                llvm::outs() << "Assignment generated for variable: " << varName << "\n";
+            } else {
+                llvm::outs() << "Warning: Unrecognized statement type in loop body.\n";
+            }
+        }
+    }
+
+    // Инкремент переменной цикла
+    llvm::Value* nextVal = builder.CreateAdd(currentVal, llvm::ConstantInt::get(builder.getInt32Ty(), 1), "nextval");
+    builder.CreateStore(nextVal, loopVarAlloca);
+    llvm::outs() << "Loop variable 'i' incremented to: "; nextVal->print(llvm::outs()); llvm::outs() << "\n";
+
+    // Переход обратно к условию
+    builder.CreateBr(loopCondBB);
+
+    // Генерация блока выхода
+    builder.SetInsertPoint(loopEndBB);
+    llvm::outs() << "ForLoop generation completed.\n";
+}
 };
-
-#endif // IRGENERATOR_H

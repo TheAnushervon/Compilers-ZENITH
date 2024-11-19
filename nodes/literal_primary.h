@@ -29,11 +29,11 @@ public:
 
         switch (type) {
             case LiteralType::Integer:
-                return ots + "LiteralPrimary\n" + ots1 + "Integer: " + std::to_string(intValue);
+                return ots + "LiteralPrimary\n" + ots1 + "Integer: " + std::to_string(intValue)+ "\n";
             case LiteralType::Real:
-                return ots + "LiteralPrimary\n"+ ots1 + "Real: " + std::to_string(realValue);
+                return ots + "LiteralPrimary\n"+ ots1 + "Real: " + std::to_string(realValue)+ "\n";
             case LiteralType::Boolean:
-                return ots + "LiteralPrimary\n" + ots1 +"Boolean: " + (boolValue ? "true" : "false");
+                return ots + "LiteralPrimary\n" + ots1 +"Boolean: " + (boolValue ? "true" : "false") + "\n";
         }
         return ""; 
     }

@@ -30,6 +30,9 @@
 #include "nodes/while_loop.h"
 #include "nodes/return_type.h"
 #include "nodes/print.h"
+#include "nodes/record_expression.h"
+#include "nodes/field_assignment.h"
+#include "nodes/field_access_expression.h"
 
 #include "tokens/enums/token_type.h"
 #include "tokens/structs/token.h"
@@ -86,14 +89,16 @@ public:
                     auto routineCall = ParseRoutineCall();
                     program->AddSimpleDeclaration(routineCall);
                 }else {
-                    std::cout <<"WTF\n" << toString(GetCurrentToken().type) << "\n";
                     auto simpleDecl = ParseSimpleDeclaration();
 
                     if (!simpleDecl) {
-                        std::cerr << "Error: Failed to parse simple declaration.\n"
-                                  << toString(GetCurrentToken().type) << " "
-                                  << GetCurrentToken().value;
-                        return nullptr;
+                        simpleDecl = ParseFieldAccessExpression();
+                        if (!simpleDecl) {
+                            std::cerr << "Error: Failed to parse simple declaration.\n"
+                                      << toString(GetCurrentToken().type) << " "
+                                      << GetCurrentToken().value;
+                            return nullptr;
+                        }
                     }
                     program->AddSimpleDeclaration(simpleDecl);
                 }
@@ -409,7 +414,6 @@ private:
             return nullptr;
         }
         AdvanceToken();
-
         auto type = ParseType();
         if (!type) {
             return nullptr;
@@ -792,6 +796,13 @@ private:
         std::vector<std::shared_ptr<Node>> relations;
         std::vector<std::string> operators;
 
+        if (GetCurrentToken().type == TokenType::tk_record) {
+            auto node = ParseRecordExpression();
+            relations.push_back(node);
+            auto expressionNode = std::make_shared<Expression>(relations, operators);
+            return expressionNode;
+        }
+
         auto relation = ParseRelation();
         if (!relation) {
             std::cerr << "Error: Failed to parse Relation in ParseExpression.\n";
@@ -1036,30 +1047,93 @@ private:
         return std::make_shared<ReturnType>(returnExpression);
     }
     std::shared_ptr<Node> ParsePrint() {
-        std::cout << " Zzz\n";
         if (GetCurrentToken().type != TokenType::tk_print) {
             return nullptr;
         }
         AdvanceToken();
         AdvanceToken();
 
-        std::cout << "GHJFDTH:\n";
-        std::cout << toString(GetCurrentToken().type) << " " << toString(GetNextToken().type) << std::endl;
-
         if (GetCurrentToken().type == TokenType::tk_identifier && GetNextToken().type == TokenType::tk_open_parenthesis) {
-            std::cout << "НУ ЧЁ\n";
             auto routineCall = ParseRoutineCall();
-            std::cout << routineCall->ToString(2) << std::endl;
             AdvanceToken();
             return std::make_shared<Print>(routineCall);
 
         }
-        std:: cout << "хуета\n";
         auto r = std::make_shared<Print>(ParseIdentifier());
-        std::cout << r->ToString(2) << std::endl;
         AdvanceToken();
         return r;
     }
+
+    std::shared_ptr<Node> ParseRecordExpression() {
+        if (GetCurrentToken().type != TokenType::tk_record) {
+            return nullptr;
+        }
+        AdvanceToken(); // Пропускаем "record"
+
+        std::vector<std::shared_ptr<Node>> fieldAssignments;
+
+        while (true) {
+            auto identifier = ParseIdentifier();
+            if (!identifier) {
+                return nullptr;
+            }
+
+            if (GetCurrentToken().type != TokenType::tk_is) {
+                return nullptr;
+            }
+            AdvanceToken(); // Пропускаем "is"
+
+            std::shared_ptr<Node> expression = ParseExpression();
+            if (!expression) {
+                return nullptr;
+            }
+
+            fieldAssignments.push_back(std::make_shared<FieldAssignment>(identifier, expression));
+
+            if (GetCurrentToken().type == TokenType::tk_end) break;
+            if (GetCurrentToken().type != TokenType::tk_comma) {
+                break;
+            }
+            AdvanceToken();
+        }
+
+
+
+        if (GetCurrentToken().type != TokenType::tk_end) {
+            return nullptr;
+        }
+        AdvanceToken(); // Пропускаем "end"
+        return std::make_shared<RecordExpression>(fieldAssignments);
+    }
+
+
+        std::shared_ptr<Node> ParseFieldAccessExpression() {
+            auto identifierToken = GetCurrentToken();
+
+            // Проверяем, есть ли точка в значении токена
+            size_t dotPos = identifierToken.value.find('.');
+            if (dotPos == std::string::npos) {
+                // Если точки нет, это просто идентификатор
+                return ParseIdentifier();
+            }
+
+            // Если точка есть, делим строку на две части
+            std::string objectName = identifierToken.value.substr(0, dotPos);
+            std::string fieldName = identifierToken.value.substr(dotPos + 1);
+
+            // Сначала парсим объект (переменную)
+            auto object = std::make_shared<Identifier>(objectName);
+
+            // Парсим поле (член записи)
+            auto field = std::make_shared<Identifier>(fieldName);
+            AdvanceToken();
+
+            // Создаем выражение доступа к полю записи
+            return std::make_shared<FieldAccessExpression>(object, field);
+        }
+
+
+
 
     // Функция для получения строкового представления оператора
     std::string GetOperatorString(TokenType tokenType) {
