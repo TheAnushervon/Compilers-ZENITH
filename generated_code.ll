@@ -6,12 +6,27 @@ source_filename = "MyProgram"
 @ans = global i32 99
 @f = global i32 4
 @s = global i32 8
+@p1.x = global i32 6
+@p1.y = global i32 6
+@p2.x = global i32 1
+@p2.y = global i32 7
 
 declare void @PrintInt(i32)
 
 declare void @PrintReal(double)
 
 declare void @PrintBoolean(i1)
+
+define i32 @recordsSum(i32 %a.y, i32 %a.x, i32 %b.y, i32 %b.x) {
+entry:
+  %a = alloca i32, align 4
+  %addtmp_simple = add i32 %a.x, %b.y
+  %addtmp_simple1 = add i32 %addtmp_simple, %a.y
+  %addtmp_simple2 = add i32 %addtmp_simple1, %b.x
+  store i32 %addtmp_simple2, ptr %a, align 4
+  %a3 = load i32, ptr %a, align 4
+  ret i32 %a3
+}
 
 define i32 @factor(i32 %a, i32 %b) {
 entry:
@@ -79,11 +94,15 @@ ifcont:                                           ; preds = %else, %then
 
 define i32 @main() {
 entry:
-  %first = load i32, ptr @first, align 4
-  %second = load i32, ptr @second, align 4
-  %ans = load i32, ptr @ans, align 4
-  %f = load i32, ptr @f, align 4
+  %p1.y = load i32, ptr @p1.y, align 4
+  %p1.x = load i32, ptr @p1.x, align 4
+  %p2.x = load i32, ptr @p2.x, align 4
   %s = load i32, ptr @s, align 4
+  %p2.y = load i32, ptr @p2.y, align 4
+  %f = load i32, ptr @f, align 4
+  %ans = load i32, ptr @ans, align 4
+  %second = load i32, ptr @second, align 4
+  %first = load i32, ptr @first, align 4
   %calltmp_routine = call i32 @sum(i32 %first, i32 %second)
   call void @PrintInt(i32 %calltmp_routine)
   %calltmp_routine1 = call i32 @comparator(i32 %first, i32 %second)
@@ -93,5 +112,7 @@ entry:
   call void @PrintInt(i32 %ans)
   %calltmp_routine3 = call i32 @factor(i32 %f, i32 %s)
   call void @PrintInt(i32 %calltmp_routine3)
+  %calltmp_routine4 = call i32 @recordsSum(i32 %p1.y, i32 %p1.x, i32 %p2.y, i32 %p2.x)
+  call void @PrintInt(i32 %calltmp_routine4)
   ret i32 0
 }

@@ -118,6 +118,8 @@ private:
     //для валидации рекордов - проверка переменных и тип
     std::unordered_map<std::string, std::unordered_map<std::string, std::string>> recordValidation;
 
+    std::unordered_map<std::string, std::string> recordToType;
+
    void generateMain(const Program* program) {
     llvm::FunctionType* mainType = llvm::FunctionType::get(builder.getInt32Ty(), false);
     llvm::Function* mainFunc = llvm::Function::Create(
@@ -258,14 +260,21 @@ llvm::Value* generateRoutineCall(const RoutineCall* routineCall, const std::unor
         auto primary = dynamic_cast<Primary*>(summand->child.get());
         auto modifiablePrimary = dynamic_cast<ModifiablePrimary*>(primary->child.get());
         auto argIdentifier = dynamic_cast<Identifier*>(modifiablePrimary->identifier.get());
-        std::string argName = sanitizeName(argIdentifier->name);
+        std::string argName = argIdentifier->name;
 
         // Используем локальный кэш, если значение переменной уже загружено
         if (localVars.find(argName) != localVars.end()) {
             args.push_back(localVars.at(argName));
         } else {
-            llvm::errs() << "Error: Variable '" << argName << "' not found in localVars.\n";
-            return nullptr;
+            if (recordToType.count(argName)) {
+                for (auto& m : recordVal[recordToType[argName]][argName]) {
+                    args.push_back(localVars.at(m.first));
+                }
+            }
+            else {
+                llvm::errs() << "Error: Variable '" << argName << "' not found in localVars.\n";
+                return nullptr;
+            }
         }
 
         ++paramIt;
@@ -332,7 +341,8 @@ llvm::Value* generateRoutineCall(const RoutineCall* routineCall, const std::unor
         // 2. Извлечение параметров
         std::vector<llvm::Type*> paramTypes;
         std::set<std::string> param_names; // Для использования в generateExpression и generateRelation
-        parseParameters(routine, paramTypes, param_names);
+       std::vector<std::string> uniq;
+        parseParameters(routine, paramTypes, param_names, uniq);
         std::cout << "2 этап: ок\n";
 
         // 3. Создание типа функции
@@ -359,26 +369,15 @@ llvm::Value* generateRoutineCall(const RoutineCall* routineCall, const std::unor
         std::cout << "4 этап: ок\n";
 
         // Установка имён для параметров
-        unsigned idx = 0;
+
         if (routine->parameters) {
-            auto parameters = dynamic_cast<Parameters*>(routine->parameters.get());
+            int idx = 0;
             for (auto& arg : function->args()) {
-                if (idx >= parameters->children.size()) {
-                    llvm::errs() << "Error: More arguments than parameters.\n";
-                    break;
-                }
-                auto paramDecl = dynamic_cast<ParameterDeclaration*>(parameters->children[idx].get());
-                if (paramDecl) {
-                    auto paramName = dynamic_cast<Identifier*>(paramDecl->identifier.get());
-                    if (paramName) {
                         // Очистка имени параметра
-                        std::string name = sanitizeName(paramName->name);
+                        std::string name = sanitizeName(uniq[idx++]);
                         arg.setName(name); // Устанавливаем имя параметра
                         param_names.insert(name);
                         llvm::outs() << "Parameter " << idx << ": " << name << "\n";
-                    }
-                }
-                ++idx;
             }
         }
 
@@ -970,8 +969,11 @@ llvm::Value* generateRoutineCall(const RoutineCall* routineCall, const std::unor
     void parseParameters(
         const RoutineDeclaration* routine,
         std::vector<llvm::Type*>& paramTypes,
-        std::set<std::string>& param_names)
+        std::set<std::string>& param_names,
+        std::vector<std::string>&  uniq
+        )
     {
+       std::unordered_map<std::string, int> controlUniqueNameWithinRecords;
         if (routine->parameters) {
             auto parameters = dynamic_cast<Parameters*>(routine->parameters.get());
             for (const auto& param : parameters->children) {
@@ -982,6 +984,39 @@ llvm::Value* generateRoutineCall(const RoutineCall* routineCall, const std::unor
                         llvm::errs() << "Error: ParameterDeclaration without Type or child.\n";
                         continue;
                     }
+                    if (auto ident = dynamic_cast<Identifier*>(dynamic_cast<Type*>(paramDecl->type.get())->child.get())) {
+                        auto nameP = dynamic_cast<Identifier*>(paramDecl ->identifier.get()) -> name;
+                        auto paramsRecord = recordValidation[ident->name];
+                        controlUniqueNameWithinRecords[ident->name]++;
+                        for (auto& item : paramsRecord) {
+
+                            //здесь
+                            llvm::Type* paramType = nullptr;
+                            if (sanitizeName(item.second) == "integer") {
+                                paramType = builder.getInt32Ty();
+                            }
+                            else if (sanitizeName(item.second) == "real") {
+                                paramType =  builder.getDoubleTy();
+                            }
+                            else if (sanitizeName(item.second) == "boolean") {
+                                paramType =  builder.getInt1Ty();
+                            }
+                            else paramType = builder.getVoidTy();
+                            if (!paramType) {
+                                llvm::errs() << "Error: Cannot map parameter type.\n";
+                                continue;
+                            }
+                            paramTypes.push_back(paramType);
+                            auto paramName = item.first;
+                            // Очистка имени параметра
+                            std::string name = sanitizeName(paramName);
+                            name = nameP + "." + name;
+                            llvm::outs() << "ParameterXX: " << name << "\n";
+                            param_names.insert(name);
+                            uniq.push_back(name);
+                        }
+                    }
+                    else{
                     llvm::Type* paramType = mapType(t->child.get());
                     if (!paramType) {
                         llvm::errs() << "Error: Cannot map parameter type.\n";
@@ -994,7 +1029,9 @@ llvm::Value* generateRoutineCall(const RoutineCall* routineCall, const std::unor
                         std::string name = sanitizeName(paramName->name);
                         llvm::outs() << "Parameter: " << name << "\n";
                         param_names.insert(name);
+                        uniq.push_back(name);
                     }
+                }
                 }
             }
         }
@@ -1016,13 +1053,14 @@ llvm::Value* generateRoutineCall(const RoutineCall* routineCall, const std::unor
         return builder.getVoidTy(); // В случае, если тип не распознан
     }
 
-    // Функция для очистки имени (удаление неалфавитно-цифровых символов)
     std::string sanitizeName(const std::string& name) {
        std::string sanitized = name;
        sanitized.erase(std::remove_if(sanitized.begin(), sanitized.end(),
            [](char c) { return !std::isalnum(c) && c != '.'; }), sanitized.end());
        return sanitized;
    }
+
+
 
     void declarePrintFunctions() {
        // PrintInt
@@ -1198,6 +1236,7 @@ void generateRecord(const TypeDeclaration* typeDecl) {
            auto generateRecordExpression = generateExpression(g, globalVars, {});
            auto newName = varName + "." + recordFieldName;
            recordVal[recordType->name][varName][newName] = generateRecordExpression;
+           recordToType[varName] =  recordType->name;
            std::string typeString = sanitizeName(recordValidation[recordType->name][recordFieldName]);
            llvm::Type* t = nullptr;
            if (typeString == "integer") {

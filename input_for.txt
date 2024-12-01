@@ -1,3 +1,13 @@
+routine recordsSum(a: Point, b: Point) : integer is
+    var a : integer is a.x + b.y + a.y + b.x
+    return a
+end
+
+type Point is record
+    var x : integer
+    var y : integer
+end
+
 routine factor(a: integer, b: integer) : integer is
 
     var m :integer is 1
@@ -35,3 +45,13 @@ print(ans)
 var f : integer is 4
 var s : integer is 8
 print(factor(f,s))
+
+
+var p1 : Point is record x is 6, y is 6 end
+
+var p2 : Point is record x is 1, y is 7 end
+
+print(recordsSum( p1, p2))
+
+
+
