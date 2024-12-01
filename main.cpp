@@ -1,9 +1,9 @@
+#include "ir_generator.cpp"
 #include "json.hpp"
 #include "syntax_analyzer.cpp"
 #include "tokens/enums/token_type.h"
 #include "tokens/pars/pars_functions.h"
 #include "type_checker.cpp"
-#include "ir_generator.cpp"
 #include <fstream>
 #include <vector>
 
@@ -110,7 +110,7 @@ std::string toString(TokenType token) {
         return "tk_identifier";
     case TokenType::tk_terminate:
         return "tk_terminate";
-        case TokenType::tk_return:
+    case TokenType::tk_return:
         return "tk_return";
     default:
         return "Unknown token";
@@ -124,26 +124,27 @@ int main() {
     try {
         // Проверяем, существует ли каталог
         if (!fs::exists(logDir) || !fs::is_directory(logDir)) {
-            std::cerr << "Directory " << logDir << " does not exist or is not a directory." << std::endl;
+            std::cerr << "Directory " << logDir
+                      << " does not exist or is not a directory." << std::endl;
             return 1;
         }
 
         // Итерируемся по всем файлам в каталоге
-        for (const auto& entry : fs::directory_iterator(logDir)) {
+        for (const auto &entry : fs::directory_iterator(logDir)) {
             if (entry.is_regular_file()) {
                 // Очищаем файл
-                std::ofstream logFile(entry.path(), std::ios::out | std::ios::trunc);
+                std::ofstream logFile(entry.path(),
+                                      std::ios::out | std::ios::trunc);
                 if (!logFile.is_open()) {
-                    std::cerr << "Failed to clear file: " << entry.path() << std::endl;
+                    std::cerr << "Failed to clear file: " << entry.path()
+                              << std::endl;
                 }
-
             }
         }
-    } catch (const std::exception& e) {
+    } catch (const std::exception &e) {
         std::cerr << "Error: " << e.what() << std::endl;
         return 1;
     }
-
 
     std::ifstream inputfile("input_for.txt");
     std::string fileContents((std::istreambuf_iterator<char>(inputfile)),
@@ -185,5 +186,4 @@ int main() {
     auto generator = new IRGenerator();
     generator->generateProgram(ast.get());
     free(generator);
-
 }

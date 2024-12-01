@@ -33,4 +33,6 @@
 
 main
 output.json
-
+*.bc
+*.ll
+my_program
