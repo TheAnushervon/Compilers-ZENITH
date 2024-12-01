@@ -18,8 +18,8 @@ public:
         std::string ots(counter * 2, ' '); // Отступы с учетом уровня вложенности
         std::string result = ots + "ParameterDeclaration:\n";
 
-        result += std::string(counter * 2 + 2, ' ') + "Parameter:\n" + identifier->ToString(counter + 2);
-        result += std::string(counter * 2 + 4, ' ') + type->ToString(counter + 2);
+        result += identifier->ToString(counter + 2);
+        result += type->ToString(counter + 2);
 
         return result;
     }

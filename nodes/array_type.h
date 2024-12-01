@@ -17,12 +17,12 @@ public:
         std::string result = ots + "ArrayType:\n";
 
         if (expression) {
-            result += ots + "  Expression:\n" + expression->ToString(count + 2);
+            result +=  expression->ToString(count + 2);
         } else {
-            result += ots + "  Expression: None\n";
+            result += "  Expression: None\n";
         }
 
-        result += ots + "  Type:\n" + type->ToString(count + 2);
+        result += type->ToString(count + 2);
 
         return result;
     }

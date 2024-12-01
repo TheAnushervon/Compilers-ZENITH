@@ -26,7 +26,7 @@ public:
         result += parameters->ToString(counter + 2) + "\n";
 
         if (returnType) {
-            result += ots + "Expected return type: "+returnType->ToString(counter + 2) + "\n";
+            result += ots + "Expected return type: \n"+returnType->ToString(counter + 2) + "\n";
         } else {
             result += ots + "Expected return type:  void\n";
         }
