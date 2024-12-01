@@ -33,6 +33,17 @@
 #include "nodes/if_statement.h"
 #include "nodes/assignment.h"
 #include "nodes/routine_call.h"
+#include "nodes/simple_declaration.h"
+#include "nodes/print.h"
+#include "nodes/expression.h"
+#include "nodes/statement.h"
+#include "nodes/for_loop.h"
+#include "nodes/literal_primary.h"
+#include "nodes/range.h"
+#include "nodes/type_declaration.h"
+#include "nodes/record_expression.h"
+#include "nodes/record_type.h"
+#include "nodes/user_type.h"
 
 
 class IRGenerator {
@@ -59,6 +70,9 @@ public:
             if (auto curr = dynamic_cast<SimpleDeclaration*>(simpleDecl.get())) {
                 if (auto varDecl = dynamic_cast<VariableDeclaration*>(curr->child.get())) {
                     generateVariableDeclaration(varDecl);
+                }
+                else if (auto typeDecl = dynamic_cast<TypeDeclaration*>(curr->child.get())) {
+                    generateRecord(typeDecl);
                 }
             }
         }
@@ -99,13 +113,7 @@ private:
     //генерация симплов
     std::unordered_map<std::string, llvm::Value*> globalVars;
 
-    std::unordered_map<std::string, llvm::StructType*> structTypes;
-
-    // Карта для хранения глобальных переменных экземпляров записей
-    std::unordered_map<std::string, llvm::GlobalVariable*> recordInstances;
-
-    // Карта для хранения индексов полей для каждого record типа
-    std::unordered_map<std::string, std::unordered_map<std::string, unsigned>> recordFieldIndices;
+    std::unordered_map<std::string, std::unordered_map<std::string, std::unordered_map<std::string, llvm::Value*>>> recordScopes;
 
    void generateMain(const Program* program) {
     llvm::FunctionType* mainType = llvm::FunctionType::get(builder.getInt32Ty(), false);
@@ -654,11 +662,18 @@ llvm::Value* generateRoutineCall(const RoutineCall* routineCall, const std::unor
     const std::set<std::string>& param_names
 ) {
     if (expr->relations.empty()) {
-        llvm::errs() << "Error: Expression contains no Relations.\n";
+        llvm::errs() << "Error: Expression contains no Relations or instantiating of RecordType.\n";
         return nullptr;
     }
 
-    llvm::Value* result = generateRelation(dynamic_cast<Relation*>(expr->relations[0].get()), localVars, param_names);
+    llvm::Value* result;
+    if (auto relation = dynamic_cast<Relation*>(expr->relations[0].get())) {
+        result = generateRelation(relation, localVars, param_names);
+    }
+    else if (auto recordInit = dynamic_cast<RecordExpression*>(expr->relations[0].get())) {
+        result = initializeRecordInstance(recordInit);
+    }
+
     if (!result) {
         llvm::errs() << "Error: Failed to generate first Relation in Expression.\n";
         return nullptr;
@@ -1003,6 +1018,10 @@ llvm::Value* generateRoutineCall(const RoutineCall* routineCall, const std::unor
             if (primitive->name == "boolean") {
                 return builder.getInt1Ty();
             }
+            std::cout << primitive->name;
+        }
+        else if (auto record = dynamic_cast<Identifier*>(typeNode)) {
+            return builder.getInt32Ty(); // todo: here should be sort of struct, but idk which
         }
         return builder.getVoidTy(); // В случае, если тип не распознан
     }
@@ -1145,189 +1164,13 @@ void generateForLoop(
 
 // Функция для генерации TypeDeclaration (record)
 void generateRecord(const TypeDeclaration* typeDecl) {
-    // Извлекаем имя записи из TypeDeclaration
-    auto identifier = dynamic_cast<Identifier*>(typeDecl->identifier.get());
-    if (!identifier) {
-        llvm::errs() << "Error: TypeDeclaration has no Identifier.\n";
-        return;
-    }
-    std::string recordName = sanitizeName(identifier->name);
-
-    // Извлекаем RecordType из TypeDeclaration
-    auto recordType = dynamic_cast<RecordType*>(typeDecl->type.get());
-    if (!recordType) {
-        llvm::errs() << "Error: TypeDeclaration is not a RecordType.\n";
-        return;
-    }
-
-    // Извлекаем имена полей и их типы
-    std::vector<llvm::Type*> llvmFields;
-    std::vector<std::string> fieldNames;
-    std::unordered_map<std::string, unsigned> fieldIndices;
-
-    unsigned index = 0;
-    for (const auto& member : recordType->members) {
-        auto varDecl = dynamic_cast<VariableDeclaration*>(member.get());
-        if (varDecl) {
-            auto fieldNameNode = dynamic_cast<Identifier*>(varDecl->identifier.get());
-            if (!fieldNameNode) {
-                llvm::errs() << "Error: Record member has no Identifier.\n";
-                continue;
-            }
-            std::string fieldName = sanitizeName(fieldNameNode->name);
-            fieldNames.push_back(fieldName);
-            fieldIndices[fieldName] = index++;
-
-            // Определение типа поля
-            auto typeNode = dynamic_cast<Type*>(varDecl->type.get());
-            if (!typeNode || !typeNode->child) {
-                llvm::errs() << "Error: VariableDeclaration without Type or child.\n";
-                llvmFields.push_back(builder.getInt32Ty()); // Предполагаем i32 по умолчанию
-                continue;
-            }
-            llvm::Type* fieldType = mapType(typeNode->child.get());
-            if (!fieldType) {
-                llvm::errs() << "Error: Failed to map type for field '" << fieldName << "'.\n";
-                llvmFields.push_back(builder.getInt32Ty()); // Предполагаем i32 по умолчанию
-                continue;
-            }
-            llvmFields.push_back(fieldType);
-        }
-    }
-
-    // Создаём StructType
-    llvm::StructType* structType = llvm::StructType::create(context, llvmFields, recordName);
-    structTypes[recordName] = structType;
-
-    // Сохраняем индексы полей
-    recordFieldIndices[recordName] = fieldIndices;
-
-    llvm::outs() << "Record type '" << recordName << "' with fields ";
-    for (const auto& field : fieldNames) {
-        llvm::outs() << field << " ";
-    }
-    llvm::outs() << "generated.\n";
+    std::cout << "Record type generated (for log)\n";
 }
 
 // Функция для инициализации экземпляра записи
-void initializeRecordInstance(const VariableDeclaration* varDecl) {
-    // Извлекаем имя переменной (экземпляра записи)
-    auto identifier = dynamic_cast<Identifier*>(varDecl->identifier.get());
-    if (!identifier) {
-        llvm::errs() << "Error: VariableDeclaration has no Identifier.\n";
-        return;
-    }
-    std::string instanceName = sanitizeName(identifier->name);
-
-    // Извлекаем тип переменной
-    auto typeNode = dynamic_cast<Type*>(varDecl->type.get());
-    if (!typeNode || !typeNode->child) {
-        llvm::errs() << "Error: VariableDeclaration without Type or child.\n";
-        return;
-    }
-
-    // Извлекаем имя типа записи
-    auto recordTypeIdentifier = dynamic_cast<Identifier*>(typeNode->child.get());
-    if (!recordTypeIdentifier) {
-        llvm::errs() << "Error: VariableDeclaration type is not an Identifier.\n";
-        return;
-    }
-    std::string recordTypeName = sanitizeName(recordTypeIdentifier->name);
-
-    // Проверяем, определён ли тип записи
-    if (structTypes.find(recordTypeName) == structTypes.end()) {
-        llvm::errs() << "Error: Record type '" << recordTypeName << "' is not defined.\n";
-        return;
-    }
-    llvm::StructType* structType = structTypes[recordTypeName];
-
-    // Инициализируем поля значениями по умолчанию
-    std::vector<llvm::Constant*> fieldInitializers(structType->getNumElements(), nullptr);
-    for (unsigned i = 0; i < structType->getNumElements(); ++i) {
-        llvm::Type* fieldType = structType->getElementType(i);
-        if (fieldType->isIntegerTy()) {
-            fieldInitializers[i] = llvm::ConstantInt::get(fieldType, 0, true);
-        }
-        else if (fieldType->isDoubleTy()) {
-            fieldInitializers[i] = llvm::ConstantFP::get(fieldType, 0.0);
-        }
-        else if (fieldType->isIntegerTy(1)) { // Boolean
-            fieldInitializers[i] = llvm::ConstantInt::get(fieldType, 0);
-        }
-        else if (fieldType->isStructTy()) {
-            fieldInitializers[i] = llvm::ConstantAggregateZero::get(fieldType);
-        }
-        else {
-            fieldInitializers[i] = llvm::Constant::getNullValue(fieldType);
-        }
-    }
-
-    // Если есть выражение инициализации, обработать RecordExpression
-    if (varDecl->expression) {
-        auto recordExpr = dynamic_cast<RecordExpression*>(varDecl->expression.get());
-        if (!recordExpr) {
-            llvm::errs() << "Error: VariableDeclaration expression is not a RecordExpression.\n";
-            return;
-        }
-
-        // Обрабатываем каждое присваивание поля
-        for (const auto& fieldAssignNode : recordExpr->fieldAssignments) {
-            auto fieldAssign = dynamic_cast<FieldAssignment*>(fieldAssignNode.get());
-            if (!fieldAssign) {
-                llvm::errs() << "Error: RecordExpression contains non-FieldAssignment.\n";
-                continue;
-            }
-
-            // Извлекаем имя поля
-            auto fieldNameNode = dynamic_cast<Identifier*>(fieldAssign->fieldName.get());
-            if (!fieldNameNode) {
-                llvm::errs() << "Error: FieldAssignment has non-Identifier field name.\n";
-                continue;
-            }
-            std::string fieldName = sanitizeName(fieldNameNode->name);
-
-            // Получаем индекс поля
-            if (recordFieldIndices.find(recordTypeName) == recordFieldIndices.end()) {
-                llvm::errs() << "Error: No field indices found for record type '" << recordTypeName << "'.\n";
-                continue;
-            }
-            const auto& fieldIndicesMap = recordFieldIndices[recordTypeName];
-            if (fieldIndicesMap.find(fieldName) == fieldIndicesMap.end()) {
-                llvm::errs() << "Error: Field '" << fieldName << "' not found in record type '" << recordTypeName << "'.\n";
-                continue;
-            }
-            unsigned fieldIndex = fieldIndicesMap.at(fieldName);
-
-            // Генерируем значение для поля
-            llvm::Value* fieldValue = generateExpression(dynamic_cast<Expression*>(fieldAssign->value.get()), const_cast<std::unordered_map<std::string, llvm::Value*>&>(globalVars), {});
-            if (!fieldValue) {
-                llvm::errs() << "Error: Failed to generate field value for '" << fieldName << "'.\n";
-                continue;
-            }
-
-            // Приведение значения к константе
-            llvm::Constant* constValue = llvm::dyn_cast<llvm::Constant>(fieldValue);
-            if (!constValue) {
-                llvm::errs() << "Error: Field value for '" << fieldName << "' is not a constant.\n";
-                continue;
-            }
-
-            // Устанавливаем инициализатор поля
-            fieldInitializers[fieldIndex] = constValue;
-        }
-    }
-
-    // Создаём ConstantStruct с инициализаторами полей
-    llvm::Constant* initializer = llvm::ConstantStruct::get(structType, fieldInitializers);
-
-    // Создаём глобальную переменную экземпляра записи
-    llvm::GlobalVariable* globalVar = new llvm::GlobalVariable(
-        *module, structType, false, llvm::GlobalValue::ExternalLinkage,
-        initializer, instanceName);
-
-    // Сохраняем глобальную переменную экземпляра
-    recordInstances[instanceName] = globalVar;
-
-    llvm::outs() << "Record instance '" << instanceName << "' of type '" << recordTypeName << "' initialized.\n";
+llvm::Value* initializeRecordInstance(const RecordExpression* varDecl) {
+    // changed return type to llvm::Value* since generateExpression requires, but may be another solution
+    std::cout << "Record initialized (for log)";
 }
+
 };
