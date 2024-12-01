@@ -1,57 +1,6 @@
-routine recordsSum(a: Point, b: Point) : integer is
-    var a : integer is a.x + b.y + a.y + b.x
-    return a
-end
-
-type Point is record
-    var x : integer
-    var y : integer
-end
-
-routine factor(a: integer, b: integer) : integer is
-
-    var m :integer is 1
-    for i in a..b loop
-         m := m * i
-    end
-    return m
-end
-
 routine sum(a: integer, b: integer) : integer is
-    var s : integer is a + b
-    return s
-end
-
-routine first_more_second(a: integer, b: integer) : boolean is
-    var ans : boolean is a > b
-    return ans
-end
-
-routine comparator(a: integer, b: integer ) : integer is
-    var max : integer is b
-    if (a > b) then
-        max := a
+    var arr : array[10] integer
+    for i in 1..10 loop
+        arr[i] := 0
     end
-    return max
 end
-
-var first : integer is 5
-var second : integer is 6
-var ans : integer is 99
-print ( sum(first, second) )
-print( comparator(first, second))
-print(first_more_second(second,first))
-print(ans)
-var f : integer is 4
-var s : integer is 8
-print(factor(f,s))
-
-
-var p1 : Point is record x is 6, y is 6 end
-
-var p2 : Point is record x is 1, y is 7 end
-
-print(recordsSum( p1, p2))
-
-
-
