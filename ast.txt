@@ -1,0 +1,100 @@
+Program:
+    RoutineDeclaration:
+        Identifier:
+          sum_function
+
+        Parameters:
+            ParameterDeclaration:
+                Identifier:
+                  a
+                Type:
+                    PrimitiveType:
+                      integer
+            ParameterDeclaration:
+                Identifier:
+                  b
+                Type:
+                    PrimitiveType:
+                      intege
+
+    Expected return type: 
+        Type:
+            PrimitiveType:
+              integer
+
+        Body:
+            SimpleDeclaration:
+                VariableDeclaration:
+                    Identifier:
+                      s
+                    Type:
+                        PrimitiveType:
+                          integer
+                    RoutineCall:
+                        Identifier:
+                          sum
+                        Expression:
+                            Relation:
+                                Simple:
+                                    Factor:
+                                        Summand:
+                                            Primary:
+                                                ModifiablePrimary:
+                                                    Identifier:
+                                                      a
+
+                        Expression:
+                            Relation:
+                                Simple:
+                                    Factor:
+                                        Summand:
+                                            Primary:
+                                                ModifiablePrimary:
+                                                    Identifier:
+                                                      b
+
+
+            Statement:
+              Assignment:
+                  ModifiablePrimary:
+                      Identifier:
+                        s
+
+                  RoutineCall:
+                      Identifier:
+                        sum
+                      Expression:
+                          Relation:
+                              Simple:
+                                  Factor:
+                                      Summand:
+                                          Primary:
+                                              ModifiablePrimary:
+                                                  Identifier:
+                                                    a
+
+                      Expression:
+                          Relation:
+                              Simple:
+                                  Factor:
+                                      Summand:
+                                          Primary:
+                                              ModifiablePrimary:
+                                                  Identifier:
+                                                    b
+
+
+            ReturnType:
+                Expression:
+                    Relation:
+                        Simple:
+                            Factor:
+                                Summand:
+                                    Primary:
+                                        ModifiablePrimary:
+                                            Identifier:
+                                              s
+
+
+
+

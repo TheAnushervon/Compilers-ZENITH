@@ -10,4 +10,6 @@ declare void @PrintBoolean(i1)
 define i32 @sumfunction(i32 %a, i32 %b) {
 entry:
   %s = alloca i32, align 4
+  %s1 = load i32, ptr %s, align 4
+  ret i32 %s1
 }
