@@ -295,7 +295,6 @@ class SyntaxAnalyzer {
             if (GetCurrentToken().type == TokenType::tk_identifier &&
                 GetNextToken().type == TokenType::tk_open_parenthesis) {
                 expression = ParseRoutineCall();
-                AdvanceToken();
             } else {
                 expression = ParseExpression();
             }
@@ -613,7 +612,6 @@ class SyntaxAnalyzer {
         if (GetCurrentToken().type == TokenType::tk_identifier &&
             GetNextToken().type == TokenType::tk_open_parenthesis) {
             expression = ParseRoutineCall();
-            AdvanceToken();
         } else {
             expression = ParseExpression();
         }

@@ -1,6 +1,5 @@
-routine sum(a: integer, b: integer) : integer is
-    var arr : array[10] integer
-    for i in 1..10 loop
-        arr[i] := 0
-    end
+routine sum_function(a:integer, b: integer) : integer is
+    var s : integer is sum(a, b)
+    s := sum(a, b)
+    return s
 end
