@@ -3,6 +3,8 @@
 #include "nodes/body.h"
 #include "nodes/expression.h"
 #include "nodes/factor.h"
+#include "nodes/field_access_expression.h"
+#include "nodes/field_assignment.h"
 #include "nodes/for_loop.h"
 #include "nodes/identifier.h"
 #include "nodes/if_statement.h"
@@ -13,10 +15,13 @@
 #include "nodes/parametrs.h"
 #include "nodes/primary.h"
 #include "nodes/primitive_type.h"
+#include "nodes/print.h"
 #include "nodes/program.h"
 #include "nodes/range.h"
+#include "nodes/record_expression.h"
 #include "nodes/record_type.h"
 #include "nodes/relation.h"
+#include "nodes/return_type.h"
 #include "nodes/routine_call.h"
 #include "nodes/routine_declaration.h"
 #include "nodes/simple.h"
@@ -28,11 +33,6 @@
 #include "nodes/user_type.h"
 #include "nodes/variable_declaration.h"
 #include "nodes/while_loop.h"
-#include "nodes/return_type.h"
-#include "nodes/print.h"
-#include "nodes/record_expression.h"
-#include "nodes/field_assignment.h"
-#include "nodes/field_access_expression.h"
 
 #include "tokens/enums/token_type.h"
 #include "tokens/structs/token.h"
@@ -44,7 +44,7 @@
 #include <vector>
 
 class SyntaxAnalyzer {
-public:
+  public:
     SyntaxAnalyzer(const std::vector<Token> &tokens)
         : tokens(tokens), currentIndex(0) {}
 
@@ -70,31 +70,33 @@ public:
                 program->AddRoutineDeclaration(routine);
                 break;
             }
-            case TokenType::tk_print :{
+            case TokenType::tk_print: {
                 auto print = ParsePrint();
                 if (!print) {
                     std::cerr << "Error: Failed to parse print statement.\n"
-                    << toString(GetCurrentToken().type);
+                              << toString(GetCurrentToken().type);
                     return nullptr;
                 }
                 program->AddSimpleDeclaration(print);
                 break;
-
             }
 
             case TokenType::tk_identifier:
             case TokenType::tk_var:
             case TokenType::tk_type: {
-                if (currentIndex+1 < tokens.size() && GetCurrentToken().type == TokenType::tk_identifier && GetNextToken().type == TokenType::tk_open_parenthesis) {
+                if (currentIndex + 1 < tokens.size() &&
+                    GetCurrentToken().type == TokenType::tk_identifier &&
+                    GetNextToken().type == TokenType::tk_open_parenthesis) {
                     auto routineCall = ParseRoutineCall();
                     program->AddSimpleDeclaration(routineCall);
-                }else {
+                } else {
                     auto simpleDecl = ParseSimpleDeclaration();
 
                     if (!simpleDecl) {
                         simpleDecl = ParseFieldAccessExpression();
                         if (!simpleDecl) {
-                            std::cerr << "Error: Failed to parse simple declaration.\n"
+                            std::cerr << "Error: Failed to parse simple "
+                                         "declaration.\n"
                                       << toString(GetCurrentToken().type) << " "
                                       << GetCurrentToken().value;
                             return nullptr;
@@ -119,114 +121,114 @@ public:
         return program;
     }
 
-std::string toString(TokenType token) {
-    switch (token) {
-    case TokenType::tk_routine:
-        return "tk_routine";
-    case TokenType::tk_type:
-        return "tk_type";
-    case TokenType::tk_print:
-        return "tk_print";
-    case TokenType::tk_is:
-        return "tk_is";
-    case TokenType::tk_var:
-        return "tk_var";
-    case TokenType::tk_end:
-        return "tk_end";
-    case TokenType::tk_for:
-        return "tk_for";
-    case TokenType::tk_loop:
-        return "tk_loop";
-    case TokenType::tk_in:
-        return "tk_in";
-    case TokenType::tk_while:
-        return "tk_while";
-    case TokenType::tk_if:
-        return "tk_if";
-    case TokenType::tk_then:
-        return "tk_then";
-    case TokenType::tk_else:
-        return "tk_else";
-    case TokenType::tk_integer:
-        return "tk_integer";
-    case TokenType::tk_boolean:
-        return "tk_boolean";
-    case TokenType::tk_real:
-        return "tk_real";
-    case TokenType::tk_record:
-        return "tk_record";
-    case TokenType::tk_array:
-        return "tk_array";
-    case TokenType::tk_true:
-        return "tk_true";
-    case TokenType::tk_false:
-        return "tk_false";
-    case TokenType::tk_reverse:
-        return "tk_reverse";
+    std::string toString(TokenType token) {
+        switch (token) {
+        case TokenType::tk_routine:
+            return "tk_routine";
+        case TokenType::tk_type:
+            return "tk_type";
+        case TokenType::tk_print:
+            return "tk_print";
+        case TokenType::tk_is:
+            return "tk_is";
+        case TokenType::tk_var:
+            return "tk_var";
+        case TokenType::tk_end:
+            return "tk_end";
+        case TokenType::tk_for:
+            return "tk_for";
+        case TokenType::tk_loop:
+            return "tk_loop";
+        case TokenType::tk_in:
+            return "tk_in";
+        case TokenType::tk_while:
+            return "tk_while";
+        case TokenType::tk_if:
+            return "tk_if";
+        case TokenType::tk_then:
+            return "tk_then";
+        case TokenType::tk_else:
+            return "tk_else";
+        case TokenType::tk_integer:
+            return "tk_integer";
+        case TokenType::tk_boolean:
+            return "tk_boolean";
+        case TokenType::tk_real:
+            return "tk_real";
+        case TokenType::tk_record:
+            return "tk_record";
+        case TokenType::tk_array:
+            return "tk_array";
+        case TokenType::tk_true:
+            return "tk_true";
+        case TokenType::tk_false:
+            return "tk_false";
+        case TokenType::tk_reverse:
+            return "tk_reverse";
 
-    case TokenType::tk_add:
-        return "tk_add";
-    case TokenType::tk_subtract:
-        return "tk_subtract";
-    case TokenType::tk_multiply:
-        return "tk_multiply";
-    case TokenType::tk_divide:
-        return "tk_divide";
-    case TokenType::tk_and:
-        return "tk_and";
-    case TokenType::tk_or:
-        return "tk_or";
-    case TokenType::tk_xor:
-        return "tk_xor";
-    case TokenType::tk_mod:
-        return "tk_mod";
-    case TokenType::tk_equal:
-        return "tk_equal";
-    case TokenType::tk_not_equal:
-        return "tk_not_equal";
-    case TokenType::tk_less_than:
-        return "tk_less_than";
-    case TokenType::tk_greater_than:
-        return "tk_greater_than";
-    case TokenType::tk_less_than_equal:
-        return "tk_less_than_equal";
-    case TokenType::tk_greater_than_equal:
-        return "tk_greater_than_equal";
-    case TokenType::tk_assign:
-        return "tk_assign";
+        case TokenType::tk_add:
+            return "tk_add";
+        case TokenType::tk_subtract:
+            return "tk_subtract";
+        case TokenType::tk_multiply:
+            return "tk_multiply";
+        case TokenType::tk_divide:
+            return "tk_divide";
+        case TokenType::tk_and:
+            return "tk_and";
+        case TokenType::tk_or:
+            return "tk_or";
+        case TokenType::tk_xor:
+            return "tk_xor";
+        case TokenType::tk_mod:
+            return "tk_mod";
+        case TokenType::tk_equal:
+            return "tk_equal";
+        case TokenType::tk_not_equal:
+            return "tk_not_equal";
+        case TokenType::tk_less_than:
+            return "tk_less_than";
+        case TokenType::tk_greater_than:
+            return "tk_greater_than";
+        case TokenType::tk_less_than_equal:
+            return "tk_less_than_equal";
+        case TokenType::tk_greater_than_equal:
+            return "tk_greater_than_equal";
+        case TokenType::tk_assign:
+            return "tk_assign";
 
-    case TokenType::tk_open_parenthesis:
-        return "tk_open_parenthesis";
-    case TokenType::tk_close_parenthesis:
-        return "tk_close_parenthesis";
-    case TokenType::tk_open_bracket:
-        return "tk_open_bracket";
-    case TokenType::tk_close_bracket:
-        return "tk_close_bracket";
-    case TokenType::tk_colon:
-        return "tk_colon";
-    case TokenType::tk_comma:
-        return "tk_comma";
-    case TokenType::tk_dot:
-        return "tk_dot";
-    case TokenType::tk_range:
-        return "tk_range";
-    case TokenType::tk_newline:
-        return "tk_newline";
-    case TokenType::tk_num:
-        return "tk_num";
-    case TokenType::tk_identifier:
-        return "tk_identifier";
-    case TokenType::tk_terminate:
-        return "tk_terminate";
+        case TokenType::tk_open_parenthesis:
+            return "tk_open_parenthesis";
+        case TokenType::tk_close_parenthesis:
+            return "tk_close_parenthesis";
+        case TokenType::tk_open_bracket:
+            return "tk_open_bracket";
+        case TokenType::tk_close_bracket:
+            return "tk_close_bracket";
+        case TokenType::tk_colon:
+            return "tk_colon";
+        case TokenType::tk_comma:
+            return "tk_comma";
+        case TokenType::tk_dot:
+            return "tk_dot";
+        case TokenType::tk_range:
+            return "tk_range";
+        case TokenType::tk_newline:
+            return "tk_newline";
+        case TokenType::tk_num:
+            return "tk_num";
+        case TokenType::tk_identifier:
+            return "tk_identifier";
+        case TokenType::tk_terminate:
+            return "tk_terminate";
         case TokenType::tk_return:
-        return "tk_return";
-    default:
-        return "Unknown token";
-    }
-};
+            return "tk_return";
+        default:
+            return "Unknown token";
+        }
+    };
 
-private:
+  private:
     const std::vector<Token> &tokens;
     size_t currentIndex;
 
@@ -239,9 +241,9 @@ private:
         return tokens[currentIndex];
     }
 
-    const Token &GetNextToken() const{
+    const Token &GetNextToken() const {
         if (currentIndex < tokens.size() - 1) {
-            return tokens[currentIndex+1];
+            return tokens[currentIndex + 1];
         }
         return tokens[currentIndex];
     }
@@ -742,7 +744,8 @@ private:
 
     std::shared_ptr<Node> ParseIfStatement() {
         if (GetCurrentToken().type != TokenType::tk_if) {
-            std::cerr << "Error: Expected 'if', but found " << GetCurrentToken().value << "\n";
+            std::cerr << "Error: Expected 'if', but found "
+                      << GetCurrentToken().value << "\n";
             return nullptr;
         }
         AdvanceToken();
@@ -759,7 +762,8 @@ private:
         }
 
         if (GetCurrentToken().type != TokenType::tk_then) {
-            std::cerr << "Error: Expected 'then', but found " << GetCurrentToken().value << "\n";
+            std::cerr << "Error: Expected 'then', but found "
+                      << GetCurrentToken().value << "\n";
             return nullptr;
         }
         AdvanceToken();
@@ -775,21 +779,23 @@ private:
             AdvanceToken();
             elseBody = ParseBody();
             if (!elseBody) {
-                std::cerr << "Error: Failed to parse 'else' body in IfStatement.\n";
+                std::cerr
+                    << "Error: Failed to parse 'else' body in IfStatement.\n";
                 return nullptr;
             }
         }
 
         if (GetCurrentToken().type != TokenType::tk_end) {
-            std::cerr << "Error: Expected 'end', but found " << GetCurrentToken().value << "\n";
+            std::cerr << "Error: Expected 'end', but found "
+                      << GetCurrentToken().value << "\n";
             return nullptr;
         }
         AdvanceToken();
 
-        auto ifStatementNode = std::make_shared<IfStatement>(ifExpression, thenBody, elseBody);
+        auto ifStatementNode =
+            std::make_shared<IfStatement>(ifExpression, thenBody, elseBody);
         return ifStatementNode;
     }
-
 
     // Обновленная функция ParseExpression() с сохранением операторов
     std::shared_ptr<Node> ParseExpression() {
@@ -799,13 +805,15 @@ private:
         if (GetCurrentToken().type == TokenType::tk_record) {
             auto node = ParseRecordExpression();
             relations.push_back(node);
-            auto expressionNode = std::make_shared<Expression>(relations, operators);
+            auto expressionNode =
+                std::make_shared<Expression>(relations, operators);
             return expressionNode;
         }
 
         auto relation = ParseRelation();
         if (!relation) {
-            std::cerr << "Error: Failed to parse Relation in ParseExpression.\n";
+            std::cerr
+                << "Error: Failed to parse Relation in ParseExpression.\n";
             return nullptr;
         }
         relations.push_back(relation);
@@ -825,19 +833,20 @@ private:
 
                 auto nextRelation = ParseRelation();
                 if (!nextRelation) {
-                    std::cerr << "Error: Failed to parse Relation in ParseExpression after operator.\n";
+                    std::cerr << "Error: Failed to parse Relation in "
+                                 "ParseExpression after operator.\n";
                     return nullptr;
                 }
                 relations.push_back(nextRelation);
-                } else {
-                    break;
-                }
+            } else {
+                break;
+            }
         }
 
-        auto expressionNode = std::make_shared<Expression>(relations, operators);
+        auto expressionNode =
+            std::make_shared<Expression>(relations, operators);
         return expressionNode;
     }
-
 
     // Обновленная функция ParseRelation() с сохранением операторов
     std::shared_ptr<Node> ParseRelation() {
@@ -868,16 +877,16 @@ private:
 
             auto nextSimple = ParseSimple();
             if (!nextSimple) {
-                std::cerr << "Error: Failed to parse Simple in ParseRelation after operator.\n";
+                std::cerr << "Error: Failed to parse Simple in ParseRelation "
+                             "after operator.\n";
                 return nullptr;
             }
             simples.push_back(nextSimple);
-            }
+        }
 
         auto relationNode = std::make_shared<Relation>(simples, operators);
         return relationNode;
     }
-
 
     // Обновленная функция ParseSimple() с сохранением операторов
     std::shared_ptr<Node> ParseSimple() {
@@ -963,7 +972,8 @@ private:
         TokenType currentToken = GetCurrentToken().type;
 
         if (currentToken == TokenType::tk_num) {
-            if (std::any_of(GetCurrentToken().value.begin(), GetCurrentToken().value.end(),
+            if (std::any_of(GetCurrentToken().value.begin(),
+                            GetCurrentToken().value.end(),
                             [](char c) { return c == '.'; })) {
                 double number = std::stod(GetCurrentToken().value);
                 primaryNode = std::make_shared<LiteralPrimary>(number);
@@ -1053,11 +1063,11 @@ private:
         AdvanceToken();
         AdvanceToken();
 
-        if (GetCurrentToken().type == TokenType::tk_identifier && GetNextToken().type == TokenType::tk_open_parenthesis) {
+        if (GetCurrentToken().type == TokenType::tk_identifier &&
+            GetNextToken().type == TokenType::tk_open_parenthesis) {
             auto routineCall = ParseRoutineCall();
             AdvanceToken();
             return std::make_shared<Print>(routineCall);
-
         }
         auto r = std::make_shared<Print>(ParseIdentifier());
         AdvanceToken();
@@ -1088,16 +1098,16 @@ private:
                 return nullptr;
             }
 
-            fieldAssignments.push_back(std::make_shared<FieldAssignment>(identifier, expression));
+            fieldAssignments.push_back(
+                std::make_shared<FieldAssignment>(identifier, expression));
 
-            if (GetCurrentToken().type == TokenType::tk_end) break;
+            if (GetCurrentToken().type == TokenType::tk_end)
+                break;
             if (GetCurrentToken().type != TokenType::tk_comma) {
                 break;
             }
             AdvanceToken();
         }
-
-
 
         if (GetCurrentToken().type != TokenType::tk_end) {
             return nullptr;
@@ -1106,68 +1116,65 @@ private:
         return std::make_shared<RecordExpression>(fieldAssignments);
     }
 
+    std::shared_ptr<Node> ParseFieldAccessExpression() {
+        auto identifierToken = GetCurrentToken();
 
-        std::shared_ptr<Node> ParseFieldAccessExpression() {
-            auto identifierToken = GetCurrentToken();
-
-            // Проверяем, есть ли точка в значении токена
-            size_t dotPos = identifierToken.value.find('.');
-            if (dotPos == std::string::npos) {
-                // Если точки нет, это просто идентификатор
-                return ParseIdentifier();
-            }
-
-            // Если точка есть, делим строку на две части
-            std::string objectName = identifierToken.value.substr(0, dotPos);
-            std::string fieldName = identifierToken.value.substr(dotPos + 1);
-
-            // Сначала парсим объект (переменную)
-            auto object = std::make_shared<Identifier>(objectName);
-
-            // Парсим поле (член записи)
-            auto field = std::make_shared<Identifier>(fieldName);
-            AdvanceToken();
-
-            // Создаем выражение доступа к полю записи
-            return std::make_shared<FieldAccessExpression>(object, field);
+        // Проверяем, есть ли точка в значении токена
+        size_t dotPos = identifierToken.value.find('.');
+        if (dotPos == std::string::npos) {
+            // Если точки нет, это просто идентификатор
+            return ParseIdentifier();
         }
 
+        // Если точка есть, делим строку на две части
+        std::string objectName = identifierToken.value.substr(0, dotPos);
+        std::string fieldName = identifierToken.value.substr(dotPos + 1);
 
+        // Сначала парсим объект (переменную)
+        auto object = std::make_shared<Identifier>(objectName);
 
+        // Парсим поле (член записи)
+        auto field = std::make_shared<Identifier>(fieldName);
+        AdvanceToken();
+
+        // Создаем выражение доступа к полю записи
+        return std::make_shared<FieldAccessExpression>(object, field);
+    }
 
     // Функция для получения строкового представления оператора
     std::string GetOperatorString(TokenType tokenType) {
         switch (tokenType) {
-            case TokenType::tk_add:
-                return "+";
-            case TokenType::tk_subtract:
-                return "-";
-            case TokenType::tk_multiply:
-                return "*";
-            case TokenType::tk_divide:
-                return "/";
-            case TokenType::tk_mod:
-                return "mod";
-            case TokenType::tk_and:
-                return "and";
-            case TokenType::tk_or:
-                return "or";
-            case TokenType::tk_xor:
-                return "xor";
-            case TokenType::tk_less_than:
-                return "<";
-            case TokenType::tk_less_than_equal:
-                return "<=";
-            case TokenType::tk_greater_than:
-                return ">";
-            case TokenType::tk_greater_than_equal:
-                return ">=";;
-            case TokenType::tk_equal:
-                return "=";
-            case TokenType::tk_not_equal:
-                return "/=";
-            default:
-                return "";
+        case TokenType::tk_add:
+            return "+";
+        case TokenType::tk_subtract:
+            return "-";
+        case TokenType::tk_multiply:
+            return "*";
+        case TokenType::tk_divide:
+            return "/";
+        case TokenType::tk_mod:
+            return "mod";
+        case TokenType::tk_and:
+            return "and";
+        case TokenType::tk_or:
+            return "or";
+        case TokenType::tk_xor:
+            return "xor";
+        case TokenType::tk_less_than:
+            return "<";
+        case TokenType::tk_less_than_equal:
+            return "<=";
+        case TokenType::tk_greater_than:
+            return ">";
+        case TokenType::tk_greater_than_equal:
+            return ">=";
+            ;
+        case TokenType::tk_equal:
+            return "=";
+        case TokenType::tk_not_equal:
+            return "/=";
+        default:
+            return "";
         }
     }
 };
