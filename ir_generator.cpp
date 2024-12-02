@@ -61,8 +61,10 @@ class IRGenerator {
     }
 
     void generateProgram(Node *node) {
-        generateInsertionFunction();
+        generateInsertionIntFunction();
+        generateInsertionBoolFunction();
         generateGetIntFunction();
+        generateGetBoolFunction();
         auto program = dynamic_cast<Program *>(node);
         if (!program) {
             llvm::errs() << "Error: Node is not a Program.\n";
@@ -146,6 +148,10 @@ class IRGenerator {
     std::unordered_set<std::string> arrNames;
     llvm::Function* insertIntFunction = nullptr;
     llvm::Function* getIntFunction = nullptr;
+    llvm::Function* insertBoolFunction = nullptr;
+    llvm::Function* getBoolFunction = nullptr;
+    llvm::Function* insertRealFunction = nullptr;
+    llvm::Function* getRealFunction = nullptr;
 
     void generateMain(const Program *program) {
         llvm::FunctionType *mainType =
@@ -1543,7 +1549,9 @@ class IRGenerator {
     // Добавляем переменную в локальные переменные
     localVars[varName] = arrayAlloca;
 }
-    void generateInsertionFunction() {
+
+    //функции генерации вставок/ получения для массивов
+    void generateInsertionIntFunction() {
         // Тип для индекса и значения
         llvm::Type *i32Type = llvm::Type::getInt32Ty(context);  // Тип для индекса и значения
 
@@ -1576,12 +1584,6 @@ class IRGenerator {
         insertIntFunction = module->getFunction("insertInt");
 
         llvm::outs() << "Глобальная функция insertInt сгенерирована.\n";
-    }
-    void callInsertInt(llvm::Value* arrPtr, llvm::Value* index, llvm::Value* value) {
-        // Генерация вызова функции insertInt с массивом, индексом и значением
-        llvm::Type* int32Ty = llvm::Type::getInt32Ty(context);
-        llvm::Value* args[] = { arrPtr, index, value };
-        builder.CreateCall(insertIntFunction, args);
     }
 
     void generateGetIntFunction() {
@@ -1617,18 +1619,141 @@ class IRGenerator {
         llvm::outs() << "Глобальная функция getInt сгенерирована.\n";
     }
 
-    void callGetInt(llvm::Value* arrPtr, llvm::Value* index) {
-        // Генерация вызова функции getInt с массивом и индексом
-        llvm::Type* int32Ty = llvm::Type::getInt32Ty(context);
-        llvm::Value* args[] = { arrPtr, index };
+    void generateInsertionBoolFunction() {
+        // Тип для индекса и значения
+        llvm::Type *i1Type = llvm::Type::getInt1Ty(context);  // Тип для значения boolean
 
-        llvm::Value* result = builder.CreateCall(getIntFunction, args);
+        // Тип возвращаемого значения функции - void
+        llvm::FunctionType *funcType = llvm::FunctionType::get(
+            llvm::Type::getVoidTy(context),
+            {llvm::PointerType::get(i1Type, 0), llvm::Type::getInt32Ty(context), i1Type},
+            false);
 
+        // Создание функции с внешней линковкой (глобальная)
+        llvm::Function *insertFunction = llvm::Function::Create(
+            funcType, llvm::Function::ExternalLinkage, "insertBool", *module);
 
-        // Можно вернуть или использовать result для дальнейших операций
-        llvm::outs() << "Значение из массива: ";
-        result->print(llvm::outs());
-        llvm::outs() << "\n";
+        // Создание начального блока для тела функции
+        llvm::BasicBlock *entry = llvm::BasicBlock::Create(context, "entry", insertFunction);
+        builder.SetInsertPoint(entry);
+
+        // Получение параметров функции
+        llvm::Function::arg_iterator args = insertFunction->arg_begin();
+        llvm::Value *arrayPtr = args++;  // Указатель на массив
+        llvm::Value *index = args++;    // Индекс
+        llvm::Value *value = args++;    // Значение для вставки
+
+        // Создание GEP с указанием типа элемента массива (i1 для boolean)
+        llvm::Value *elementPtr = builder.CreateGEP(i1Type, arrayPtr, index, "elementPtr");
+
+        // Сохранение значения в массив
+        builder.CreateStore(value, elementPtr);
+
+        // Завершение функции
+        builder.CreateRetVoid();
+        insertBoolFunction = module->getFunction("insertBool");
+
+        llvm::outs() << "Глобальная функция insertBool сгенерирована.\n";
     }
 
+    void generateGetBoolFunction() {
+        // Тип для индекса и значения
+        llvm::Type *i1Type = llvm::Type::getInt1Ty(context);  // Тип для значения boolean
+
+        // Тип возвращаемого значения функции - i1 (boolean)
+        llvm::FunctionType *funcType = llvm::FunctionType::get(
+            i1Type, {llvm::PointerType::get(i1Type, 0), llvm::Type::getInt32Ty(context)}, false);
+
+        // Создание функции с внешней линковкой (глобальная)
+        llvm::Function *getFunction = llvm::Function::Create(
+            funcType, llvm::Function::ExternalLinkage, "getBool", *module);
+
+        // Создание начального блока для тела функции
+        llvm::BasicBlock *entry = llvm::BasicBlock::Create(context, "entry", getFunction);
+        builder.SetInsertPoint(entry);
+
+        // Получение параметров функции
+        llvm::Function::arg_iterator args = getFunction->arg_begin();
+        llvm::Value *arrayPtr = args++;  // Указатель на массив
+        llvm::Value *index = args++;    // Индекс
+
+        // Создание GEP с указанием типа элемента массива (i1 для boolean)
+        llvm::Value *elementPtr = builder.CreateGEP(i1Type, arrayPtr, index, "elementPtr");
+
+        // Загрузка значения из массива
+        llvm::Value *loadedValue = builder.CreateLoad(i1Type, elementPtr, "loadedValue");
+
+        // Возвращаем загруженное значение
+        builder.CreateRet(loadedValue);
+        getBoolFunction = module->getFunction("getBool");
+        llvm::outs() << "Глобальная функция getBool сгенерирована.\n";
+    }
+    void generateInsertionRealFunction() {
+        // Тип для индекса и значения
+        llvm::Type *f32Type = llvm::Type::getFloatTy(context);  // Тип для значения real (float)
+
+        // Тип возвращаемого значения функции - void
+        llvm::FunctionType *funcType = llvm::FunctionType::get(
+            llvm::Type::getVoidTy(context),
+            {llvm::PointerType::get(f32Type, 0), llvm::Type::getInt32Ty(context), f32Type},
+            false);
+
+        // Создание функции с внешней линковкой (глобальная)
+        llvm::Function *insertFunction = llvm::Function::Create(
+            funcType, llvm::Function::ExternalLinkage, "insertReal", *module);
+
+        // Создание начального блока для тела функции
+        llvm::BasicBlock *entry = llvm::BasicBlock::Create(context, "entry", insertFunction);
+        builder.SetInsertPoint(entry);
+
+        // Получение параметров функции
+        llvm::Function::arg_iterator args = insertFunction->arg_begin();
+        llvm::Value *arrayPtr = args++;  // Указатель на массив
+        llvm::Value *index = args++;    // Индекс
+        llvm::Value *value = args++;    // Значение для вставки
+
+        // Создание GEP с указанием типа элемента массива (f32 для real)
+        llvm::Value *elementPtr = builder.CreateGEP(f32Type, arrayPtr, index, "elementPtr");
+
+        // Сохранение значения в массив
+        builder.CreateStore(value, elementPtr);
+
+        // Завершение функции
+        builder.CreateRetVoid();
+        insertRealFunction = module->getFunction("insertReal");
+
+        llvm::outs() << "Глобальная функция insertReal сгенерирована.\n";
+    }
+    void generateGetRealFunction() {
+        // Тип для индекса и значения
+        llvm::Type *f32Type = llvm::Type::getFloatTy(context);  // Тип для значения real (float)
+
+        // Тип возвращаемого значения функции - f32 (real)
+        llvm::FunctionType *funcType = llvm::FunctionType::get(
+            f32Type, {llvm::PointerType::get(f32Type, 0), llvm::Type::getInt32Ty(context)}, false);
+
+        // Создание функции с внешней линковкой (глобальная)
+        llvm::Function *getFunction = llvm::Function::Create(
+            funcType, llvm::Function::ExternalLinkage, "getReal", *module);
+
+        // Создание начального блока для тела функции
+        llvm::BasicBlock *entry = llvm::BasicBlock::Create(context, "entry", getFunction);
+        builder.SetInsertPoint(entry);
+
+        // Получение параметров функции
+        llvm::Function::arg_iterator args = getFunction->arg_begin();
+        llvm::Value *arrayPtr = args++;  // Указатель на массив
+        llvm::Value *index = args++;    // Индекс
+
+        // Создание GEP с указанием типа элемента массива (f32 для real)
+        llvm::Value *elementPtr = builder.CreateGEP(f32Type, arrayPtr, index, "elementPtr");
+
+        // Загрузка значения из массива
+        llvm::Value *loadedValue = builder.CreateLoad(f32Type, elementPtr, "loadedValue");
+
+        // Возвращаем загруженное значение
+        builder.CreateRet(loadedValue);
+        getRealFunction = module->getFunction("getReal");
+        llvm::outs() << "Глобальная функция getReal сгенерирована.\n";
+    }
 };
