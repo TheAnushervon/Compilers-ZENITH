@@ -1,15 +1,47 @@
 ; ModuleID = 'MyProgram'
 source_filename = "MyProgram"
 
+@p = global i32 7
+@k = global i32 9
+
 declare void @PrintInt(i32)
 
 declare void @PrintReal(double)
 
 declare void @PrintBoolean(i1)
 
-define i32 @sumfunction(i32 %a, i32 %b) {
+define i32 @sum(i32 %a, i32 %b) {
 entry:
-  %s = alloca i32, align 4
-  %s1 = load i32, ptr %s, align 4
-  ret i32 %s1
+  %f = alloca i32, align 4
+  store i32 %a, ptr %f, align 4
+  store i32 %b, ptr %f, align 4
+  %i = alloca i32, align 4
+  store i32 1, ptr %i, align 4
+  br label %loopcond
+
+loopcond:                                         ; preds = %loopbody, %entry
+  %i1 = load i32, ptr %i, align 4
+  %loopcmp = icmp sle i32 %i1, 10
+  br i1 %loopcmp, label %loopbody, label %loopend
+
+loopbody:                                         ; preds = %loopcond
+  %f2 = load i32, ptr %f, align 4
+  %addtmp_simple = add i32 %f2, 1
+  store i32 %addtmp_simple, ptr %f, align 4
+  %nextval = add i32 %i1, 1
+  store i32 %nextval, ptr %i, align 4
+  br label %loopcond
+
+loopend:                                          ; preds = %loopcond
+  %f3 = load i32, ptr %f, align 4
+  ret i32 %f3
+}
+
+define i32 @main() {
+entry:
+  %k = load i32, ptr @k, align 4
+  %p = load i32, ptr @p, align 4
+  %calltmp_routine = call i32 @sum(i32 %p, i32 %k)
+  call void @PrintInt(i32 %calltmp_routine)
+  ret i32 0
 }

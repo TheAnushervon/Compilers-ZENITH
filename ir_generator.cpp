@@ -518,12 +518,13 @@ class IRGenerator {
                             dynamic_cast<IfStatement *>(st->child.get())) {
                         generateIfStatement(ifStmt, localVars, param_names);
                     }
+                    // Обработка Assignment
+                    if (auto assignStmt = dynamic_cast<Assignment *>(st->child.get())) {
+                        generateAssignment(assignStmt, localVars, param_names);
+                    }
                 }
 
-                // Обработка Assignment
-                if (auto assignStmt = dynamic_cast<Assignment *>(stmt.get())) {
-                    generateAssignment(assignStmt, localVars, param_names);
-                }
+
 
                 // Генерация return
                 if (auto returnStmt = dynamic_cast<ReturnType *>(stmt.get())) {
@@ -726,6 +727,7 @@ class IRGenerator {
             // Обработка присваивания
             if (auto assignStmt =
                     dynamic_cast<const Assignment *>(stmt.get())) {
+
                 generateAssignment(assignStmt, localVars, param_names);
             }
             // Обработка вызовов функций
@@ -1282,6 +1284,7 @@ class IRGenerator {
         for (const auto &stmt : body->statements) {
             if (auto statementNode = dynamic_cast<Statement *>(stmt.get())) {
                 auto childNode = statementNode->child.get();
+                //TODO добавить параметры функци в локальные переменные
                 if (auto assignStmt = dynamic_cast<Assignment *>(childNode)) {
                     llvm::outs() << "Processing Assignment in loop body.\n";
 

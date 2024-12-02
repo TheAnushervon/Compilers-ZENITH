@@ -1,7 +1,64 @@
 Program:
+    SimpleDeclaration:
+        VariableDeclaration:
+            Identifier:
+              p
+            Type:
+                PrimitiveType:
+                  integer
+            Expression:
+                Relation:
+                    Simple:
+                        Factor:
+                            Summand:
+                                Primary:
+                                    LiteralPrimary
+                                        Integer: 7
+
+    SimpleDeclaration:
+        VariableDeclaration:
+            Identifier:
+              k
+            Type:
+                PrimitiveType:
+                  integer
+            Expression:
+                Relation:
+                    Simple:
+                        Factor:
+                            Summand:
+                                Primary:
+                                    LiteralPrimary
+                                        Integer: 9
+
+  Print:
+        RoutineCall:
+            Identifier:
+              sum
+            Expression:
+                Relation:
+                    Simple:
+                        Factor:
+                            Summand:
+                                Primary:
+                                    ModifiablePrimary:
+                                        Identifier:
+                                          p
+
+            Expression:
+                Relation:
+                    Simple:
+                        Factor:
+                            Summand:
+                                Primary:
+                                    ModifiablePrimary:
+                                        Identifier:
+                                          k
+
+
     RoutineDeclaration:
         Identifier:
-          sum_function
+          sum
 
         Parameters:
             ParameterDeclaration:
@@ -26,62 +83,88 @@ Program:
             SimpleDeclaration:
                 VariableDeclaration:
                     Identifier:
-                      s
+                      f
                     Type:
                         PrimitiveType:
                           integer
-                    RoutineCall:
-                        Identifier:
-                          sum
-                        Expression:
-                            Relation:
-                                Simple:
-                                    Factor:
-                                        Summand:
-                                            Primary:
-                                                ModifiablePrimary:
-                                                    Identifier:
-                                                      a
-
-                        Expression:
-                            Relation:
-                                Simple:
-                                    Factor:
-                                        Summand:
-                                            Primary:
-                                                ModifiablePrimary:
-                                                    Identifier:
-                                                      b
+                    Expression:
+                        Relation:
+                            Simple:
+                                Factor:
+                                    Summand:
+                                        Primary:
+                                            ModifiablePrimary:
+                                                Identifier:
+                                                  a
 
 
             Statement:
               Assignment:
                   ModifiablePrimary:
                       Identifier:
-                        s
+                        f
 
-                  RoutineCall:
-                      Identifier:
-                        sum
+                  Expression:
+                      Relation:
+                          Simple:
+                              Factor:
+                                  Summand:
+                                      Primary:
+                                          ModifiablePrimary:
+                                              Identifier:
+                                                b
+
+
+            Statement:
+              ForLoop:
+                  Identifier:
+                    i
+
+                  Range:
+                    Start: 
+                    Expression:
+                        Relation:
+                            Simple:
+                                Factor:
+                                    Summand:
+                                        Primary:
+                                            LiteralPrimary
+                                                Integer: 1
+
+                    End: 
                       Expression:
                           Relation:
                               Simple:
                                   Factor:
                                       Summand:
                                           Primary:
-                                              ModifiablePrimary:
-                                                  Identifier:
-                                                    a
+                                              LiteralPrimary
+                                                  Integer: 10
 
-                      Expression:
-                          Relation:
-                              Simple:
-                                  Factor:
-                                      Summand:
-                                          Primary:
-                                              ModifiablePrimary:
-                                                  Identifier:
-                                                    b
+                  Body:
+                      Statement:
+                        Assignment:
+                            ModifiablePrimary:
+                                Identifier:
+                                  f
+
+                            Expression:
+                                Relation:
+                                    Simple:
+                                        Factor:
+                                            Summand:
+                                                Primary:
+                                                    ModifiablePrimary:
+                                                        Identifier:
+                                                          f
+
+
+                                        Operator: +
+                                        Factor:
+                                            Summand:
+                                                Primary:
+                                                    LiteralPrimary
+                                                        Integer: 1
 
 
             ReturnType:
@@ -93,7 +176,7 @@ Program:
                                     Primary:
                                         ModifiablePrimary:
                                             Identifier:
-                                              s
+                                              f
 
 
 
