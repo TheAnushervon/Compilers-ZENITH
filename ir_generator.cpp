@@ -854,7 +854,7 @@ class IRGenerator {
         }
     }
 
-    // Внутри метода generateBody добавьте обработку ForLoop
+
     void generateBody(const Node *bodyNode,
                       std::unordered_map<std::string, llvm::Value *> &localVars,
                       const std::set<std::string> &param_names) {
@@ -1601,7 +1601,6 @@ class IRGenerator {
                                llvm::Function::ExternalLinkage, "PrintBoolean",
                                module.get());
     }
-    // Добавьте этот метод в приватную секцию класса IRGenerator
     void
     generateForLoop(const ForLoop *forLoop,
                     std::unordered_map<std::string, llvm::Value *> &localVars,
@@ -2085,4 +2084,5 @@ class IRGenerator {
         getRealFunction = module->getFunction("getReal");
         llvm::outs() << "Глобальная функция getReal сгенерирована.\n";
     }
+
 };
