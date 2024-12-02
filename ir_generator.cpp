@@ -1032,59 +1032,95 @@ generateSimple(const Simple *simple,
 
 
     // Функция для генерации Factor (Summand { ( * | / | % ) Summand })
-    llvm::Value *
-    generateFactor(const Factor *factor,
-                   std::unordered_map<std::string, llvm::Value *> &localVars,
-                   const std::set<std::string> &param_names) {
-        if (factor->summands.empty()) {
-            llvm::errs() << "Error: Factor contains no Summands.\n";
+llvm::Value *
+generateFactor(const Factor *factor,
+               std::unordered_map<std::string, llvm::Value *> &localVars,
+               const std::set<std::string> &param_names) {
+    if (factor->summands.empty()) {
+        llvm::errs() << "Error: Factor contains no Summands.\n";
+        return nullptr;
+    }
+
+    // Генерация первого Summand
+    llvm::Value *result =
+        generateSummand(dynamic_cast<Summand *>(factor->summands[0].get()),
+                        localVars, param_names);
+    if (!result) {
+        llvm::errs()
+            << "Error: Failed to generate first Summand in Factor.\n";
+        return nullptr;
+    }
+
+    // Итерируемся по оставшимся Summands и операторам
+    for (size_t i = 1; i < factor->summands.size(); ++i) {
+        if (i - 1 >= factor->operators.size()) {
+            llvm::errs() << "Error: Not enough operators in Factor.\n";
+            break;
+        }
+
+        std::string op = factor->operators[i - 1];
+        llvm::Value *rhs = generateSummand(
+            dynamic_cast<Summand *>(factor->summands[i].get()), localVars,
+            param_names);
+        if (!rhs) {
+            llvm::errs() << "Error: Failed to generate Summand at index "
+                         << i << " in Factor.\n";
             return nullptr;
         }
 
-        // Генерация первого Summand
-        llvm::Value *result =
-            generateSummand(dynamic_cast<Summand *>(factor->summands[0].get()),
-                            localVars, param_names);
-        if (!result) {
-            llvm::errs()
-                << "Error: Failed to generate first Summand in Factor.\n";
+        std::cout << "Processing Factor operator: " << op << "\n";
+
+        // Проверка типов операндов перед операцией
+        if (result->getType() != rhs->getType()) {
+            llvm::errs() << "Error: Type mismatch between operands.\n";
             return nullptr;
         }
 
-        // Итерируемся по оставшимся Summands и операторам
-        for (size_t i = 1; i < factor->summands.size(); ++i) {
-            if (i - 1 >= factor->operators.size()) {
-                llvm::errs() << "Error: Not enough operators in Factor.\n";
-                break;
-            }
-
-            std::string op = factor->operators[i - 1];
-            llvm::Value *rhs = generateSummand(
-                dynamic_cast<Summand *>(factor->summands[i].get()), localVars,
-                param_names);
-            if (!rhs) {
-                llvm::errs() << "Error: Failed to generate Summand at index "
-                             << i << " in Factor.\n";
-                return nullptr;
-            }
-
-            std::cout << "Processing Factor operator: " << op << "\n";
-
+        // Приведение типов для real (double) и integer
+        if (result->getType()->isIntegerTy() && rhs->getType()->isIntegerTy()) {
+            // Оба операнда типа i32
             if (op == "*") {
                 result = builder.CreateMul(result, rhs, "multmp_factor");
             } else if (op == "/") {
                 result = builder.CreateSDiv(result, rhs, "divtmp_factor");
             } else if (op == "%") {
                 result = builder.CreateSRem(result, rhs, "remtmp_factor");
-            } else {
-                llvm::errs()
-                    << "Error: Unsupported Factor operator '" << op << "'.\n";
-                return nullptr;
+            }
+        } else if (result->getType()->isIntegerTy()) {
+            // Приводим integer к double (real)
+            result = builder.CreateSIToFP(result, llvm::Type::getDoubleTy(context), "result_cast");
+            if (op == "*") {
+                result = builder.CreateFMul(result, rhs, "multmp_factor");
+            } else if (op == "/") {
+                result = builder.CreateFDiv(result, rhs, "divtmp_factor");
+            } else if (op == "%") {
+                result = builder.CreateFRem(result, rhs, "remtmp_factor");
+            }
+        } else if (rhs->getType()->isIntegerTy()) {
+            // Приводим integer к double (real)
+            rhs = builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context), "rhs_cast");
+            if (op == "*") {
+                result = builder.CreateFMul(result, rhs, "multmp_factor");
+            } else if (op == "/") {
+                result = builder.CreateFDiv(result, rhs, "divtmp_factor");
+            } else if (op == "%") {
+                result = builder.CreateFRem(result, rhs, "remtmp_factor");
+            }
+        } else {
+            // Оба операнда типа double (real)
+            if (op == "*") {
+                result = builder.CreateFMul(result, rhs, "multmp_factor");
+            } else if (op == "/") {
+                result = builder.CreateFDiv(result, rhs, "divtmp_factor");
+            } else if (op == "%") {
+                result = builder.CreateFRem(result, rhs, "remtmp_factor");
             }
         }
-
-        return result;
     }
+
+    return result;
+}
+
 
     // Функция для генерации Summand
     llvm::Value *
