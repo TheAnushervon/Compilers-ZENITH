@@ -145,7 +145,7 @@ class IRGenerator {
 
     std::unordered_map<std::string, std::string> recordToType;
 
-    std::unordered_set<std::string> arrNames;
+    std::unordered_map<std::string, llvm::Type *> arrNames;
     llvm::Function* insertIntFunction = nullptr;
     llvm::Function* getIntFunction = nullptr;
     llvm::Function* insertBoolFunction = nullptr;
@@ -677,7 +677,7 @@ class IRGenerator {
     }
 
     // Метод для генерации Assignment (Присваивания)
-  void generateAssignment(
+void generateAssignment(
     const Assignment* assignStmt,
     std::unordered_map<std::string, llvm::Value*>& localVars,
     const std::set<std::string>& param_names) {
@@ -735,11 +735,27 @@ class IRGenerator {
             return;
         }
 
-        llvm::Value* arrPtr = builder.CreateBitCast(arrayAlloca, llvm::PointerType::getUnqual(llvm::Type::getInt32Ty(context)));
+        llvm::Type* arrType = arrNames[varName]; // Тип элемента массива
 
-        // Вызов insertInt с передачей массива, индекса и значения
-        llvm::Value* args[] = { arrPtr, index, exprValue };
-        builder.CreateCall(insertIntFunction, args);
+        if (arrType->isIntegerTy(32)) { // integer
+            llvm::Value* arrPtr = builder.CreateBitCast(arrayAlloca, llvm::PointerType::getUnqual(llvm::Type::getInt32Ty(context)));
+            llvm::Value* args[] = { arrPtr, index, exprValue };
+            builder.CreateCall(insertIntFunction, args);
+        }
+        else if (arrType->isDoubleTy()) { // real
+            llvm::Value* arrPtr = builder.CreateBitCast(arrayAlloca, llvm::PointerType::getUnqual(llvm::Type::getDoubleTy(context)));
+            llvm::Value* args[] = { arrPtr, index, exprValue };
+            builder.CreateCall(insertRealFunction, args);
+        }
+        else if (arrType->isIntegerTy(1)) { // boolean
+            llvm::Value* arrPtr = builder.CreateBitCast(arrayAlloca, llvm::PointerType::getUnqual(llvm::Type::getInt1Ty(context)));
+            llvm::Value* args[] = { arrPtr, index, exprValue };
+            builder.CreateCall(insertBoolFunction, args);
+        }
+        else {
+            llvm::errs() << "Error: Unknown array element type for " << varName << ".\n";
+            return;
+        }
     } else {
         // Обработка обычных переменных
         auto it = localVars.find(varName);
@@ -766,6 +782,7 @@ class IRGenerator {
         llvm::outs() << "Assignment completed for variable: " << varName << "\n";
     }
 }
+
 
 
     // Внутри метода generateBody добавьте обработку ForLoop
@@ -1053,89 +1070,123 @@ class IRGenerator {
     }
 
     // Функция для генерации Primary
-    llvm::Value *
-    generatePrimary(const Primary *primary,
-                    std::unordered_map<std::string, llvm::Value *> &localVars,
-                    const std::set<std::string> &param_names) {
-        // Обработка узла литерала
-        if (auto literal =
-                dynamic_cast<LiteralPrimary *>(primary->child.get())) {
-            switch (literal->type) {
-            case LiteralPrimary::LiteralType::Integer: {
-                llvm::outs()
-                    << "Generating integer literal: " << literal->intValue
-                    << "\n";
-                return llvm::ConstantInt::get(builder.getInt32Ty(),
-                                              literal->intValue, true);
-            }
-            case LiteralPrimary::LiteralType::Real: {
-                llvm::outs()
-                    << "Generating real literal: " << literal->realValue
-                    << "\n";
-                return llvm::ConstantFP::get(builder.getDoubleTy(),
-                                             literal->realValue);
-            }
-            case LiteralPrimary::LiteralType::Boolean: {
-                llvm::outs() << "Generating boolean literal: "
-                             << (literal->boolValue ? "true" : "false") << "\n";
-                return llvm::ConstantInt::get(builder.getInt1Ty(),
-                                              literal->boolValue);
-            }
-            default:
-                llvm::errs() << "Error: Unsupported literal type.\n";
-                return nullptr;
-            }
+llvm::Value *
+generatePrimary(const Primary *primary,
+                std::unordered_map<std::string, llvm::Value *> &localVars,
+                const std::set<std::string> &param_names) {
+    // Обработка узла литерала
+    if (auto literal =
+            dynamic_cast<LiteralPrimary *>(primary->child.get())) {
+        switch (literal->type) {
+        case LiteralPrimary::LiteralType::Integer: {
+            llvm::outs()
+                << "Generating integer literal: " << literal->intValue
+                << "\n";
+            return llvm::ConstantInt::get(builder.getInt32Ty(),
+                                          literal->intValue, true);
         }
+        case LiteralPrimary::LiteralType::Real: {
+            llvm::outs()
+                << "Generating real literal: " << literal->realValue
+                << "\n";
+            return llvm::ConstantFP::get(builder.getDoubleTy(),
+                                         literal->realValue);
+        }
+        case LiteralPrimary::LiteralType::Boolean: {
+            llvm::outs() << "Generating boolean literal: "
+                         << (literal->boolValue ? "true" : "false") << "\n";
+            return llvm::ConstantInt::get(builder.getInt1Ty(),
+                                          literal->boolValue);
+        }
+        default:
+            llvm::errs() << "Error: Unsupported literal type.\n";
+            return nullptr;
+        }
+    }
 
-        // Обработка модифицируемого узла
-        if (auto modifiable =
-                dynamic_cast<ModifiablePrimary *>(primary->child.get())) {
-            auto identifier =
-                dynamic_cast<Identifier *>(modifiable->identifier.get());
-            if (identifier) {
-                // Очистка имени идентификатора
-                std::string name = sanitizeName(identifier->name);
-                if (arrNames.count(name) > 0) {
-                    // Обрабатываем выражение индекса (arr[4])
-                    auto indexExpr = dynamic_cast<Expression*>(modifiable->expression.get());
-                    llvm::Value *index = generateExpression(indexExpr, localVars, param_names);
-                    if (!index) {
-                        llvm::errs() << "Error: Failed to generate index expression for array access.\n";
-                        return nullptr;
-                    }
+    // Обработка модифицируемого узла
+    if (auto modifiable =
+            dynamic_cast<ModifiablePrimary *>(primary->child.get())) {
+        auto identifier =
+            dynamic_cast<Identifier *>(modifiable->identifier.get());
+        if (identifier) {
+            // Очистка имени идентификатора
+            std::string name = sanitizeName(identifier->name);
 
-                    // Получаем ссылку на функцию getInt
+            if (arrNames.count(name) > 0) {
+                // Обрабатываем выражение индекса (arr[4])
+                auto indexExpr = dynamic_cast<Expression*>(modifiable->expression.get());
+                llvm::Value *index = generateExpression(indexExpr, localVars, param_names);
+                if (!index) {
+                    llvm::errs() << "Error: Failed to generate index expression for array access.\n";
+                    return nullptr;
+                }
+
+                // Получаем тип массива из arrNames
+                llvm::Type *arrElemType = arrNames.at(name); // Тип элемента массива
+
+                // В зависимости от типа массива, выбираем соответствующую функцию
+                if (arrElemType->isIntegerTy(32)) { // i32
                     llvm::Function *getIntFunc = getIntFunction;
-
-                    // Проверяем, что у нас есть ссылка на функцию
                     if (!getIntFunc) {
                         llvm::errs() << "Error: getInt function is not available.\n";
                         return nullptr;
                     }
 
-                    // Создаем аргументы для вызова функции getInt (указатель на массив и индекс)
-                    llvm::Value *arrayPtr = localVars[name]; // Это должен быть указатель на массив
-
-                    // Проверка типа массива (ожидаем указатель на i32)
+                    llvm::Value *arrayPtr = localVars[name]; // Указатель на массив
                     if (!arrayPtr->getType()->isPointerTy()) {
                         llvm::errs() << "Error: Expected pointer type for array.\n";
                         return nullptr;
                     }
 
-                    // Вызов функции getInt для получения значения элемента массива
                     std::vector<llvm::Value*> args;
                     args.push_back(arrayPtr);  // указатель на массив
                     args.push_back(index);     // индекс элемента
+                    return builder.CreateCall(getIntFunc, args); // Получаем элемент массива
+                }
+                else if (arrElemType->isDoubleTy()) { // double
+                    llvm::Function *getRealFunc = getRealFunction; // Функция для real
+                    if (!getRealFunc) {
+                        llvm::errs() << "Error: getReal function is not available.\n";
+                        return nullptr;
+                    }
 
-                    // Вызываем функцию getInt
-                    llvm::Value *element = builder.CreateCall(getIntFunc, args);
+                    llvm::Value *arrayPtr = localVars[name]; // Указатель на массив
+                    if (!arrayPtr->getType()->isPointerTy()) {
+                        llvm::errs() << "Error: Expected pointer type for array.\n";
+                        return nullptr;
+                    }
 
-                    // Возвращаем результат
-                    return element;
+                    std::vector<llvm::Value*> args;
+                    args.push_back(arrayPtr);  // указатель на массив
+                    args.push_back(index);     // индекс элемента
+                    return builder.CreateCall(getRealFunc, args); // Получаем элемент массива
+                }
+                else if (arrElemType->isIntegerTy(1)) { // boolean
+                    llvm::Function *getBoolFunc = getBoolFunction; // Функция для boolean
+                    if (!getBoolFunc) {
+                        llvm::errs() << "Error: getBool function is not available.\n";
+                        return nullptr;
+                    }
 
+                    llvm::Value *arrayPtr = localVars[name]; // Указатель на массив
+                    if (!arrayPtr->getType()->isPointerTy()) {
+                        llvm::errs() << "Error: Expected pointer type for array.\n";
+                        return nullptr;
+                    }
+
+                    std::vector<llvm::Value*> args;
+                    args.push_back(arrayPtr);  // указатель на массив
+                    args.push_back(index);     // индекс элемента
+                    return builder.CreateCall(getBoolFunc, args); // Получаем элемент массива
                 }
                 else {
-
+                    llvm::errs() << "Error: Unsupported array element type.\n";
+                    return nullptr;
+                }
+            }
+            else {
+                // Обработка обычных переменных
                 llvm::outs()
                     << "Generating Primary for identifier: " << name << "\n";
 
@@ -1158,11 +1209,11 @@ class IRGenerator {
                         llvm::outs()
                             << "Loaded value from variable: " << name << "\n";
                         return loadedVal;
-                            } else {
-                                llvm::errs() << "Error: Variable " << name
-                                             << " is not an AllocaInst.\n";
-                                return nullptr;
-                            }
+                    } else {
+                        llvm::errs() << "Error: Variable " << name
+                                     << " is not an AllocaInst.\n";
+                        return nullptr;
+                    }
                 }
                 // Проверка параметров функции
                 else if (param_names.find(name) != param_names.end()) {
@@ -1185,11 +1236,12 @@ class IRGenerator {
                 }
             }
         }
-        }
-
-        llvm::errs() << "Error: Primary node processing failed.\n";
-        return nullptr;
     }
+
+    llvm::errs() << "Error: Primary node processing failed.\n";
+    return nullptr;
+}
+
 
     // Функция для парсинга параметров
     void parseParameters(const RoutineDeclaration *routine,
@@ -1512,7 +1564,6 @@ class IRGenerator {
         return;
     }
     std::string varName = sanitizeName(identifier->name);
-        arrNames.insert(varName);
 
     // Извлекаем тип переменной
     auto typeNode = dynamic_cast<Type*>(varDecl->type.get());
@@ -1538,6 +1589,7 @@ class IRGenerator {
     auto elemTypeNode = dynamic_cast<Type*>(arrayTypeNode->type.get());
 
     llvm::Type* elemLLVMType = mapType(elemTypeNode->child.get());
+        arrNames[varName] = elemLLVMType;
 
     // Создаём тип массива в LLVM
     llvm::ArrayType* llvmArrayType = llvm::ArrayType::get(elemLLVMType, arraySize);
