@@ -1,5 +1,5 @@
 #!/bin/bash
-
+./main
 # Убедитесь, что исходные файлы и генерированный IR существуют
 if [[ ! -f "print_functions.c" ]]; then
   echo "Error: print_functions.c not found!"
