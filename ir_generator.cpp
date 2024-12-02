@@ -13,6 +13,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "nodes/array_type.h"
 #include "nodes/assignment.h"
 #include "nodes/body.h"
 #include "nodes/expression.h"
@@ -44,7 +45,6 @@
 #include "nodes/type_declaration.h"
 #include "nodes/variable_declaration.h"
 #include "utility/utils.cpp"
-#include "nodes/array_type.h"
 
 #include <unordered_set>
 
@@ -146,12 +146,12 @@ class IRGenerator {
     std::unordered_map<std::string, std::string> recordToType;
 
     std::unordered_map<std::string, llvm::Type *> arrNames;
-    llvm::Function* insertIntFunction = nullptr;
-    llvm::Function* getIntFunction = nullptr;
-    llvm::Function* insertBoolFunction = nullptr;
-    llvm::Function* getBoolFunction = nullptr;
-    llvm::Function* insertRealFunction = nullptr;
-    llvm::Function* getRealFunction = nullptr;
+    llvm::Function *insertIntFunction = nullptr;
+    llvm::Function *getIntFunction = nullptr;
+    llvm::Function *insertBoolFunction = nullptr;
+    llvm::Function *getBoolFunction = nullptr;
+    llvm::Function *insertRealFunction = nullptr;
+    llvm::Function *getRealFunction = nullptr;
 
     void generateMain(const Program *program) {
         llvm::FunctionType *mainType =
@@ -185,7 +185,7 @@ class IRGenerator {
         for (const auto &simpleDecl : program->simpleDeclarations) {
             if (auto routineCall =
                     dynamic_cast<RoutineCall *>(simpleDecl.get())) {
-                generateRoutineCall(routineCall, localVars);
+                generateRoutineCall(routineCall, localVars, {});
             }
 
             else if (auto printNode = dynamic_cast<Print *>(simpleDecl.get())) {
@@ -207,7 +207,7 @@ class IRGenerator {
         if (auto routineCall =
                 dynamic_cast<RoutineCall *>(printNode->child.get())) {
             llvm::outs() << "Generating Print for RoutineCall...\n";
-            valueToPrint = generateRoutineCall(routineCall, localVars);
+            valueToPrint = generateRoutineCall(routineCall, localVars, {});
         }
         // Если внутри Print находится Identifier
         else if (auto identifier =
@@ -279,7 +279,8 @@ class IRGenerator {
 
     llvm::Value *generateRoutineCall(
         const RoutineCall *routineCall,
-        const std::unordered_map<std::string, llvm::Value *> &localVars) {
+        const std::unordered_map<std::string, llvm::Value *> &localVars,
+        const std::set<std::string> &param_names) {
         auto identifier =
             dynamic_cast<Identifier *>(routineCall->identifier.get());
         if (!identifier) {
@@ -322,6 +323,16 @@ class IRGenerator {
             // Используем локальный кэш, если значение переменной уже загружено
             if (localVars.find(argName) != localVars.end()) {
                 args.push_back(localVars.at(argName));
+            } else if (param_names.find(argName) != param_names.end()) {
+                llvm::Function *function =
+                    builder.GetInsertBlock()->getParent();
+                for (auto &arg : function->args()) {
+                    if (arg.getName() == argName) {
+                        llvm::outs()
+                            << "Accessing parameter: " << argName << "\n";
+                        args.push_back(&arg); // add args to func
+                    }
+                }
             } else {
                 if (recordToType.count(argName)) {
                     for (auto &m : recordVal[recordToType[argName]][argName]) {
@@ -476,15 +487,17 @@ class IRGenerator {
                         std::string varName = sanitizeName(identifier->name);
                         llvm::outs()
                             << "Declaring variable: " << varName << "\n";
-                        if (auto p = dynamic_cast<ArrayType*>(dynamic_cast<Type*>(varDecl->type.get())->child.get())) {
+                        if (auto p = dynamic_cast<ArrayType *>(
+                                dynamic_cast<Type *>(varDecl->type.get())
+                                    ->child.get())) {
                             generateArray(varDecl, localVars);
-                        }
-                        else {
+                        } else {
 
-                            auto type = dynamic_cast<Type *>(varDecl->type.get());
+                            auto type =
+                                dynamic_cast<Type *>(varDecl->type.get());
                             if (!type) {
-                                llvm::errs()
-                                    << "Error: VariableDeclaration without Type.\n";
+                                llvm::errs() << "Error: VariableDeclaration "
+                                                "without Type.\n";
                                 continue;
                             }
 
@@ -512,16 +525,33 @@ class IRGenerator {
                                         llvm::outs() << "Stored value in "
                                                      << varName << "\n";
                                     } else {
-                                        llvm::errs() << "Error: Failed to generate "
-                                                        "expression for variable "
-                                                     << varName << "\n";
+                                        llvm::errs()
+                                            << "Error: Failed to generate "
+                                               "expression for variable "
+                                            << varName << "\n";
                                     }
                                 } else {
                                     llvm::errs()
-                                        << "Error: VariableDeclaration expression "
+                                        << "Error: VariableDeclaration "
+                                           "expression "
                                            "does not contain relations.\n";
                                 }
-                                    }
+                            }
+
+                            if (auto routineCall = dynamic_cast<RoutineCall *>(
+                                    varDecl->expression.get())) {
+                                llvm::Value *exprValue = generateRoutineCall(
+                                    routineCall, localVars, param_names);
+                                if (exprValue) {
+                                    builder.CreateStore(exprValue, alloca);
+                                    llvm::outs() << "Stored value in "
+                                                 << varName << "\n";
+                                } else {
+                                    llvm::errs() << "Error: Failed to generate "
+                                                    "expression for variable "
+                                                 << varName << "\n";
+                                }
+                            }
                         }
                     }
                 }
@@ -538,12 +568,11 @@ class IRGenerator {
                         generateIfStatement(ifStmt, localVars, param_names);
                     }
                     // Обработка Assignment
-                    if (auto assignStmt = dynamic_cast<Assignment *>(st->child.get())) {
+                    if (auto assignStmt =
+                            dynamic_cast<Assignment *>(st->child.get())) {
                         generateAssignment(assignStmt, localVars, param_names);
                     }
                 }
-
-
 
                 // Генерация return
                 if (auto returnStmt = dynamic_cast<ReturnType *>(stmt.get())) {
@@ -677,113 +706,153 @@ class IRGenerator {
     }
 
     // Метод для генерации Assignment (Присваивания)
-void generateAssignment(
-    const Assignment* assignStmt,
-    std::unordered_map<std::string, llvm::Value*>& localVars,
-    const std::set<std::string>& param_names) {
+    void generateAssignment(
+        const Assignment *assignStmt,
+        std::unordered_map<std::string, llvm::Value *> &localVars,
+        const std::set<std::string> &param_names) {
 
-    llvm::outs() << "Generating Assignment...\n";
+        llvm::outs() << "Generating Assignment...\n";
 
-    auto modifiable = dynamic_cast<ModifiablePrimary*>(assignStmt->modifiablePrimary.get());
-    if (!modifiable) {
-        llvm::errs() << "Error: Assignment does not contain ModifiablePrimary.\n";
-        return;
+        auto modifiable = dynamic_cast<ModifiablePrimary *>(
+            assignStmt->modifiablePrimary.get());
+        if (!modifiable) {
+            llvm::errs()
+                << "Error: Assignment does not contain ModifiablePrimary.\n";
+            return;
+        }
+
+        auto identifier =
+            dynamic_cast<Identifier *>(modifiable->identifier.get());
+        if (!identifier) {
+            llvm::errs()
+                << "Error: ModifiablePrimary does not contain Identifier.\n";
+            return;
+        }
+
+        std::string varName = sanitizeName(identifier->name);
+        llvm::outs() << "Assigning to variable: " << varName << "\n";
+
+        // Проверка, является ли переменная массивом
+        if (arrNames.count(varName) > 0) {
+            auto expArr =
+                dynamic_cast<Expression *>(modifiable->expression.get());
+            if (!expArr) {
+                llvm::errs()
+                    << "Error: Expected an expression for array index.\n";
+                return;
+            }
+
+            // Генерация значения индекса для массива
+            llvm::Value *index =
+                generateExpression(expArr, localVars, param_names);
+            if (!index) {
+                llvm::errs() << "Error: Failed to generate array index.\n";
+                return;
+            }
+
+            // Генерация выражения, которое присваивается элементу массива
+            auto assigExpr =
+                dynamic_cast<Expression *>(assignStmt->expression.get());
+            llvm::Value *exprValue =
+                generateExpression(assigExpr, localVars, param_names);
+            if (!exprValue) {
+                llvm::errs()
+                    << "Error: Failed to generate assignment expression.\n";
+                return;
+            }
+
+            // Получаем указатель на массив
+            auto it = localVars.find(varName);
+            if (it == localVars.end()) {
+                llvm::errs() << "Error: Array " << varName << " not found.\n";
+                return;
+            }
+
+            llvm::AllocaInst *arrayAlloca =
+                llvm::dyn_cast<llvm::AllocaInst>(it->second);
+            if (!arrayAlloca) {
+                llvm::errs() << "Error: Invalid array allocation for "
+                             << varName << ".\n";
+                return;
+            }
+
+            llvm::Type *arrType = arrNames[varName]; // Тип элемента массива
+
+            if (arrType->isIntegerTy(32)) { // integer
+                llvm::Value *arrPtr = builder.CreateBitCast(
+                    arrayAlloca, llvm::PointerType::getUnqual(
+                                     llvm::Type::getInt32Ty(context)));
+                llvm::Value *args[] = {arrPtr, index, exprValue};
+                builder.CreateCall(insertIntFunction, args);
+            } else if (arrType->isDoubleTy()) { // real
+                llvm::Value *arrPtr = builder.CreateBitCast(
+                    arrayAlloca, llvm::PointerType::getUnqual(
+                                     llvm::Type::getDoubleTy(context)));
+                llvm::Value *args[] = {arrPtr, index, exprValue};
+                builder.CreateCall(insertRealFunction, args);
+            } else if (arrType->isIntegerTy(1)) { // boolean
+                llvm::Value *arrPtr = builder.CreateBitCast(
+                    arrayAlloca, llvm::PointerType::getUnqual(
+                                     llvm::Type::getInt1Ty(context)));
+                llvm::Value *args[] = {arrPtr, index, exprValue};
+                builder.CreateCall(insertBoolFunction, args);
+            } else {
+                llvm::errs() << "Error: Unknown array element type for "
+                             << varName << ".\n";
+                return;
+            }
+        } else {
+            // Обработка обычных переменных
+            auto it = localVars.find(varName);
+            if (it == localVars.end()) {
+                llvm::errs()
+                    << "Error: Variable " << varName << " not found.\n";
+                return;
+            }
+
+            llvm::Value *varAlloca = it->second;
+
+            if (auto expression =
+                    dynamic_cast<Expression *>(assignStmt->expression.get())) {
+                if (!expression) {
+                    llvm::errs()
+                        << "Error: Assignment expression is not valid.\n";
+                    return;
+                }
+
+                llvm::Value *exprValue =
+                    generateExpression(expression, localVars, param_names);
+                if (!exprValue) {
+                    llvm::errs() << "Error: Failed to generate expression for "
+                                    "assignment.\n";
+                    return;
+                }
+
+                builder.CreateStore(exprValue, varAlloca);
+                llvm::outs()
+                    << "Assignment completed for variable: " << varName << "\n";
+            } else if (auto routineCall = dynamic_cast<RoutineCall *>(
+                           assignStmt->expression.get())) {
+                if (!routineCall) {
+                    llvm::errs()
+                        << "Error: Assignment expression is not valid.\n";
+                    return;
+                }
+
+                llvm::Value *exprValue =
+                    generateRoutineCall(routineCall, localVars, param_names);
+                if (!exprValue) {
+                    llvm::errs() << "Error: Failed to generate expression for "
+                                    "assignment.\n";
+                    return;
+                }
+
+                builder.CreateStore(exprValue, varAlloca);
+                llvm::outs()
+                    << "Assignment completed for variable: " << varName << "\n";
+            }
+        }
     }
-
-    auto identifier = dynamic_cast<Identifier*>(modifiable->identifier.get());
-    if (!identifier) {
-        llvm::errs() << "Error: ModifiablePrimary does not contain Identifier.\n";
-        return;
-    }
-
-    std::string varName = sanitizeName(identifier->name);
-    llvm::outs() << "Assigning to variable: " << varName << "\n";
-
-    // Проверка, является ли переменная массивом
-    if (arrNames.count(varName) > 0) {
-        auto expArr = dynamic_cast<Expression*>(modifiable->expression.get());
-        if (!expArr) {
-            llvm::errs() << "Error: Expected an expression for array index.\n";
-            return;
-        }
-
-        // Генерация значения индекса для массива
-        llvm::Value* index = generateExpression(expArr, localVars, param_names);
-        if (!index) {
-            llvm::errs() << "Error: Failed to generate array index.\n";
-            return;
-        }
-
-        // Генерация выражения, которое присваивается элементу массива
-        auto assigExpr = dynamic_cast<Expression*>(assignStmt->expression.get());
-        llvm::Value* exprValue = generateExpression(assigExpr, localVars, param_names);
-        if (!exprValue) {
-            llvm::errs() << "Error: Failed to generate assignment expression.\n";
-            return;
-        }
-
-        // Получаем указатель на массив
-        auto it = localVars.find(varName);
-        if (it == localVars.end()) {
-            llvm::errs() << "Error: Array " << varName << " not found.\n";
-            return;
-        }
-
-        llvm::AllocaInst* arrayAlloca = llvm::dyn_cast<llvm::AllocaInst>(it->second);
-        if (!arrayAlloca) {
-            llvm::errs() << "Error: Invalid array allocation for " << varName << ".\n";
-            return;
-        }
-
-        llvm::Type* arrType = arrNames[varName]; // Тип элемента массива
-
-        if (arrType->isIntegerTy(32)) { // integer
-            llvm::Value* arrPtr = builder.CreateBitCast(arrayAlloca, llvm::PointerType::getUnqual(llvm::Type::getInt32Ty(context)));
-            llvm::Value* args[] = { arrPtr, index, exprValue };
-            builder.CreateCall(insertIntFunction, args);
-        }
-        else if (arrType->isDoubleTy()) { // real
-            llvm::Value* arrPtr = builder.CreateBitCast(arrayAlloca, llvm::PointerType::getUnqual(llvm::Type::getDoubleTy(context)));
-            llvm::Value* args[] = { arrPtr, index, exprValue };
-            builder.CreateCall(insertRealFunction, args);
-        }
-        else if (arrType->isIntegerTy(1)) { // boolean
-            llvm::Value* arrPtr = builder.CreateBitCast(arrayAlloca, llvm::PointerType::getUnqual(llvm::Type::getInt1Ty(context)));
-            llvm::Value* args[] = { arrPtr, index, exprValue };
-            builder.CreateCall(insertBoolFunction, args);
-        }
-        else {
-            llvm::errs() << "Error: Unknown array element type for " << varName << ".\n";
-            return;
-        }
-    } else {
-        // Обработка обычных переменных
-        auto it = localVars.find(varName);
-        if (it == localVars.end()) {
-            llvm::errs() << "Error: Variable " << varName << " not found.\n";
-            return;
-        }
-
-        llvm::Value* varAlloca = it->second;
-
-        auto expression = dynamic_cast<Expression*>(assignStmt->expression.get());
-        if (!expression) {
-            llvm::errs() << "Error: Assignment expression is not valid.\n";
-            return;
-        }
-
-        llvm::Value* exprValue = generateExpression(expression, localVars, param_names);
-        if (!exprValue) {
-            llvm::errs() << "Error: Failed to generate expression for assignment.\n";
-            return;
-        }
-
-        builder.CreateStore(exprValue, varAlloca);
-        llvm::outs() << "Assignment completed for variable: " << varName << "\n";
-    }
-}
-
-
 
     // Внутри метода generateBody добавьте обработку ForLoop
     void generateBody(const Node *bodyNode,
@@ -806,7 +875,7 @@ void generateAssignment(
             // Обработка вызовов функций
             else if (auto routineCall =
                          dynamic_cast<const RoutineCall *>(stmt.get())) {
-                generateRoutineCall(routineCall, localVars);
+                generateRoutineCall(routineCall, localVars, {});
             }
             // Обработка вложенных циклов
             else if (auto forLoop = dynamic_cast<const ForLoop *>(stmt.get())) {
@@ -887,293 +956,323 @@ void generateAssignment(
     }
     // Функция для генерации Relation (Simple [ ( < | <= | > | >= | = | /= )
     // Simple ])
-  llvm::Value *
-generateRelation(const Relation *rel,
-                 std::unordered_map<std::string, llvm::Value *> &localVars,
-                 const std::set<std::string> &param_names) {
-    if (rel->simples.empty()) {
-        llvm::errs() << "Error: Relation contains no Simples.\n";
-        return nullptr;
-    }
-
-    // Генерация первого Simple
-    llvm::Value *result =
-        generateSimple(dynamic_cast<Simple *>(rel->simples[0].get()),
-                       localVars, param_names);
-    if (!result) {
-        llvm::errs()
-            << "Error: Failed to generate first Simple in Relation.\n";
-        return nullptr;
-    }
-
-    // Итерируемся по оставшимся Simples и операторам
-    for (size_t i = 1; i < rel->simples.size(); ++i) {
-        if (i - 1 >= rel->operators.size()) {
-            llvm::errs() << "Error: Not enough operators in Relation.\n";
-            break;
+    llvm::Value *
+    generateRelation(const Relation *rel,
+                     std::unordered_map<std::string, llvm::Value *> &localVars,
+                     const std::set<std::string> &param_names) {
+        if (rel->simples.empty()) {
+            llvm::errs() << "Error: Relation contains no Simples.\n";
+            return nullptr;
         }
 
-        std::string op = rel->operators[i - 1];
-        llvm::Value *rhs =
-            generateSimple(dynamic_cast<Simple *>(rel->simples[i].get()),
+        // Генерация первого Simple
+        llvm::Value *result =
+            generateSimple(dynamic_cast<Simple *>(rel->simples[0].get()),
                            localVars, param_names);
-        if (!rhs) {
-            llvm::errs() << "Error: Failed to generate Simple at index "
-                         << i << " in Relation.\n";
+        if (!result) {
+            llvm::errs()
+                << "Error: Failed to generate first Simple in Relation.\n";
             return nullptr;
         }
 
-        std::cout << "Processing Relation operator: " << op << "\n";
+        // Итерируемся по оставшимся Simples и операторам
+        for (size_t i = 1; i < rel->simples.size(); ++i) {
+            if (i - 1 >= rel->operators.size()) {
+                llvm::errs() << "Error: Not enough operators in Relation.\n";
+                break;
+            }
 
-        // Проверка типов операндов перед операцией
-        if (result->getType() != rhs->getType()) {
-            llvm::errs() << "Error: Type mismatch between operands.\n";
-            return nullptr;
+            std::string op = rel->operators[i - 1];
+            llvm::Value *rhs =
+                generateSimple(dynamic_cast<Simple *>(rel->simples[i].get()),
+                               localVars, param_names);
+            if (!rhs) {
+                llvm::errs() << "Error: Failed to generate Simple at index "
+                             << i << " in Relation.\n";
+                return nullptr;
+            }
+
+            std::cout << "Processing Relation operator: " << op << "\n";
+
+            // Проверка типов операндов перед операцией
+            if (result->getType() != rhs->getType()) {
+                llvm::errs() << "Error: Type mismatch between operands.\n";
+                return nullptr;
+            }
+
+            // Приведение типов для real (double) и integer
+            if (result->getType()->isIntegerTy() &&
+                rhs->getType()->isIntegerTy()) {
+                // Оба операнда типа i32
+                if (op == "<") {
+                    result =
+                        builder.CreateICmpSLT(result, rhs, "cmplt_relation");
+                } else if (op == "<=") {
+                    result =
+                        builder.CreateICmpSLE(result, rhs, "cmple_relation");
+                } else if (op == ">") {
+                    result =
+                        builder.CreateICmpSGT(result, rhs, "cmpgt_relation");
+                } else if (op == ">=") {
+                    result =
+                        builder.CreateICmpSGE(result, rhs, "cmpge_relation");
+                } else if (op == "=") {
+                    result =
+                        builder.CreateICmpEQ(result, rhs, "cmpeq_relation");
+                } else if (op == "/=") {
+                    result =
+                        builder.CreateICmpNE(result, rhs, "cmpne_relation");
+                }
+            } else if (result->getType()->isIntegerTy()) {
+                // Приводим integer к double (real)
+                result = builder.CreateSIToFP(
+                    result, llvm::Type::getDoubleTy(context), "result_cast");
+                if (op == "<") {
+                    result =
+                        builder.CreateFCmpOLT(result, rhs, "cmplt_relation");
+                } else if (op == "<=") {
+                    result =
+                        builder.CreateFCmpOLE(result, rhs, "cmple_relation");
+                } else if (op == ">") {
+                    result =
+                        builder.CreateFCmpOGT(result, rhs, "cmpgt_relation");
+                } else if (op == ">=") {
+                    result =
+                        builder.CreateFCmpOGE(result, rhs, "cmpge_relation");
+                } else if (op == "=") {
+                    result =
+                        builder.CreateFCmpOEQ(result, rhs, "cmpeq_relation");
+                } else if (op == "/=") {
+                    result =
+                        builder.CreateFCmpONE(result, rhs, "cmpne_relation");
+                }
+            } else if (rhs->getType()->isIntegerTy()) {
+                // Приводим integer к double (real)
+                rhs = builder.CreateSIToFP(
+                    rhs, llvm::Type::getDoubleTy(context), "rhs_cast");
+                if (op == "<") {
+                    result =
+                        builder.CreateFCmpOLT(result, rhs, "cmplt_relation");
+                } else if (op == "<=") {
+                    result =
+                        builder.CreateFCmpOLE(result, rhs, "cmple_relation");
+                } else if (op == ">") {
+                    result =
+                        builder.CreateFCmpOGT(result, rhs, "cmpgt_relation");
+                } else if (op == ">=") {
+                    result =
+                        builder.CreateFCmpOGE(result, rhs, "cmpge_relation");
+                } else if (op == "=") {
+                    result =
+                        builder.CreateFCmpOEQ(result, rhs, "cmpeq_relation");
+                } else if (op == "/=") {
+                    result =
+                        builder.CreateFCmpONE(result, rhs, "cmpne_relation");
+                }
+            } else {
+                // Оба операнда типа double (real)
+                if (op == "<") {
+                    result =
+                        builder.CreateFCmpOLT(result, rhs, "cmplt_relation");
+                } else if (op == "<=") {
+                    result =
+                        builder.CreateFCmpOLE(result, rhs, "cmple_relation");
+                } else if (op == ">") {
+                    result =
+                        builder.CreateFCmpOGT(result, rhs, "cmpgt_relation");
+                } else if (op == ">=") {
+                    result =
+                        builder.CreateFCmpOGE(result, rhs, "cmpge_relation");
+                } else if (op == "=") {
+                    result =
+                        builder.CreateFCmpOEQ(result, rhs, "cmpeq_relation");
+                } else if (op == "/=") {
+                    result =
+                        builder.CreateFCmpONE(result, rhs, "cmpne_relation");
+                }
+            }
         }
 
-        // Приведение типов для real (double) и integer
-        if (result->getType()->isIntegerTy() && rhs->getType()->isIntegerTy()) {
-            // Оба операнда типа i32
-            if (op == "<") {
-                result = builder.CreateICmpSLT(result, rhs, "cmplt_relation");
-            } else if (op == "<=") {
-                result = builder.CreateICmpSLE(result, rhs, "cmple_relation");
-            } else if (op == ">") {
-                result = builder.CreateICmpSGT(result, rhs, "cmpgt_relation");
-            } else if (op == ">=") {
-                result = builder.CreateICmpSGE(result, rhs, "cmpge_relation");
-            } else if (op == "=") {
-                result = builder.CreateICmpEQ(result, rhs, "cmpeq_relation");
-            } else if (op == "/=") {
-                result = builder.CreateICmpNE(result, rhs, "cmpne_relation");
-            }
-        } else if (result->getType()->isIntegerTy()) {
-            // Приводим integer к double (real)
-            result = builder.CreateSIToFP(result, llvm::Type::getDoubleTy(context), "result_cast");
-            if (op == "<") {
-                result = builder.CreateFCmpOLT(result, rhs, "cmplt_relation");
-            } else if (op == "<=") {
-                result = builder.CreateFCmpOLE(result, rhs, "cmple_relation");
-            } else if (op == ">") {
-                result = builder.CreateFCmpOGT(result, rhs, "cmpgt_relation");
-            } else if (op == ">=") {
-                result = builder.CreateFCmpOGE(result, rhs, "cmpge_relation");
-            } else if (op == "=") {
-                result = builder.CreateFCmpOEQ(result, rhs, "cmpeq_relation");
-            } else if (op == "/=") {
-                result = builder.CreateFCmpONE(result, rhs, "cmpne_relation");
-            }
-        } else if (rhs->getType()->isIntegerTy()) {
-            // Приводим integer к double (real)
-            rhs = builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context), "rhs_cast");
-            if (op == "<") {
-                result = builder.CreateFCmpOLT(result, rhs, "cmplt_relation");
-            } else if (op == "<=") {
-                result = builder.CreateFCmpOLE(result, rhs, "cmple_relation");
-            } else if (op == ">") {
-                result = builder.CreateFCmpOGT(result, rhs, "cmpgt_relation");
-            } else if (op == ">=") {
-                result = builder.CreateFCmpOGE(result, rhs, "cmpge_relation");
-            } else if (op == "=") {
-                result = builder.CreateFCmpOEQ(result, rhs, "cmpeq_relation");
-            } else if (op == "/=") {
-                result = builder.CreateFCmpONE(result, rhs, "cmpne_relation");
-            }
-        } else {
-            // Оба операнда типа double (real)
-            if (op == "<") {
-                result = builder.CreateFCmpOLT(result, rhs, "cmplt_relation");
-            } else if (op == "<=") {
-                result = builder.CreateFCmpOLE(result, rhs, "cmple_relation");
-            } else if (op == ">") {
-                result = builder.CreateFCmpOGT(result, rhs, "cmpgt_relation");
-            } else if (op == ">=") {
-                result = builder.CreateFCmpOGE(result, rhs, "cmpge_relation");
-            } else if (op == "=") {
-                result = builder.CreateFCmpOEQ(result, rhs, "cmpeq_relation");
-            } else if (op == "/=") {
-                result = builder.CreateFCmpONE(result, rhs, "cmpne_relation");
-            }
-        }
+        return result;
     }
-
-    return result;
-}
-
 
     // Функция для генерации Simple (Factor { ( + | - ) Factor })
     llvm::Value *
-generateSimple(const Simple *simple,
-               std::unordered_map<std::string, llvm::Value *> &localVars,
-               const std::set<std::string> &param_names) {
-    if (simple->factors.empty()) {
-        llvm::errs() << "Error: Simple contains no Factors.\n";
-        return nullptr;
-    }
-
-    // Генерация первого Factor
-    llvm::Value *result =
-        generateFactor(dynamic_cast<Factor *>(simple->factors[0].get()),
-                       localVars, param_names);
-    if (!result) {
-        llvm::errs()
-            << "Error: Failed to generate first Factor in Simple.\n";
-        return nullptr;
-    }
-
-    // Итерируемся по оставшимся Factors и операторам
-    for (size_t i = 1; i < simple->factors.size(); ++i) {
-        if (i - 1 >= simple->operators.size()) {
-            llvm::errs() << "Error: Not enough operators in Simple.\n";
-            break;
+    generateSimple(const Simple *simple,
+                   std::unordered_map<std::string, llvm::Value *> &localVars,
+                   const std::set<std::string> &param_names) {
+        if (simple->factors.empty()) {
+            llvm::errs() << "Error: Simple contains no Factors.\n";
+            return nullptr;
         }
 
-        std::string op = simple->operators[i - 1];
-        llvm::Value *rhs =
-            generateFactor(dynamic_cast<Factor *>(simple->factors[i].get()),
+        // Генерация первого Factor
+        llvm::Value *result =
+            generateFactor(dynamic_cast<Factor *>(simple->factors[0].get()),
                            localVars, param_names);
-        if (!rhs) {
-            llvm::errs() << "Error: Failed to generate Factor at index "
-                         << i << " in Simple.\n";
+        if (!result) {
+            llvm::errs()
+                << "Error: Failed to generate first Factor in Simple.\n";
             return nullptr;
         }
 
-        std::cout << "Processing Simple operator: " << op << "\n";
+        // Итерируемся по оставшимся Factors и операторам
+        for (size_t i = 1; i < simple->factors.size(); ++i) {
+            if (i - 1 >= simple->operators.size()) {
+                llvm::errs() << "Error: Not enough operators in Simple.\n";
+                break;
+            }
 
-        // Проверка типов операндов перед операцией
-        if (result->getType() != rhs->getType()) {
-            llvm::errs() << "Error: Type mismatch between operands.\n";
-            return nullptr;
+            std::string op = simple->operators[i - 1];
+            llvm::Value *rhs =
+                generateFactor(dynamic_cast<Factor *>(simple->factors[i].get()),
+                               localVars, param_names);
+            if (!rhs) {
+                llvm::errs() << "Error: Failed to generate Factor at index "
+                             << i << " in Simple.\n";
+                return nullptr;
+            }
+
+            std::cout << "Processing Simple operator: " << op << "\n";
+
+            // Проверка типов операндов перед операцией
+            if (result->getType() != rhs->getType()) {
+                llvm::errs() << "Error: Type mismatch between operands.\n";
+                return nullptr;
+            }
+
+            // Приведение типов для real (double) и integer
+            if (result->getType()->isIntegerTy() &&
+                rhs->getType()->isIntegerTy()) {
+                // Оба операнда типа i32
+                if (op == "+") {
+                    result = builder.CreateAdd(result, rhs, "addtmp_simple");
+                } else if (op == "-") {
+                    result = builder.CreateSub(result, rhs, "subtmp_simple");
+                }
+            } else if (result->getType()->isIntegerTy()) {
+                // Приводим integer к double (real)
+                result = builder.CreateSIToFP(
+                    result, llvm::Type::getDoubleTy(context), "result_cast");
+                if (op == "+") {
+                    result = builder.CreateFAdd(result, rhs, "addtmp_simple");
+                } else if (op == "-") {
+                    result = builder.CreateFSub(result, rhs, "subtmp_simple");
+                }
+            } else if (rhs->getType()->isIntegerTy()) {
+                // Приводим integer к double (real)
+                rhs = builder.CreateSIToFP(
+                    rhs, llvm::Type::getDoubleTy(context), "rhs_cast");
+                if (op == "+") {
+                    result = builder.CreateFAdd(result, rhs, "addtmp_simple");
+                } else if (op == "-") {
+                    result = builder.CreateFSub(result, rhs, "subtmp_simple");
+                }
+            } else {
+                // Оба операнда типа double (real)
+                if (op == "+") {
+                    result = builder.CreateFAdd(result, rhs, "addtmp_simple");
+                } else if (op == "-") {
+                    result = builder.CreateFSub(result, rhs, "subtmp_simple");
+                }
+            }
         }
 
-        // Приведение типов для real (double) и integer
-        if (result->getType()->isIntegerTy() && rhs->getType()->isIntegerTy()) {
-            // Оба операнда типа i32
-            if (op == "+") {
-                result = builder.CreateAdd(result, rhs, "addtmp_simple");
-            } else if (op == "-") {
-                result = builder.CreateSub(result, rhs, "subtmp_simple");
-            }
-        } else if (result->getType()->isIntegerTy()) {
-            // Приводим integer к double (real)
-            result = builder.CreateSIToFP(result, llvm::Type::getDoubleTy(context), "result_cast");
-            if (op == "+") {
-                result = builder.CreateFAdd(result, rhs, "addtmp_simple");
-            } else if (op == "-") {
-                result = builder.CreateFSub(result, rhs, "subtmp_simple");
-            }
-        } else if (rhs->getType()->isIntegerTy()) {
-            // Приводим integer к double (real)
-            rhs = builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context), "rhs_cast");
-            if (op == "+") {
-                result = builder.CreateFAdd(result, rhs, "addtmp_simple");
-            } else if (op == "-") {
-                result = builder.CreateFSub(result, rhs, "subtmp_simple");
-            }
-        } else {
-            // Оба операнда типа double (real)
-            if (op == "+") {
-                result = builder.CreateFAdd(result, rhs, "addtmp_simple");
-            } else if (op == "-") {
-                result = builder.CreateFSub(result, rhs, "subtmp_simple");
-            }
-        }
+        return result;
     }
-
-    return result;
-}
-
 
     // Функция для генерации Factor (Summand { ( * | / | % ) Summand })
-llvm::Value *
-generateFactor(const Factor *factor,
-               std::unordered_map<std::string, llvm::Value *> &localVars,
-               const std::set<std::string> &param_names) {
-    if (factor->summands.empty()) {
-        llvm::errs() << "Error: Factor contains no Summands.\n";
-        return nullptr;
-    }
-
-    // Генерация первого Summand
-    llvm::Value *result =
-        generateSummand(dynamic_cast<Summand *>(factor->summands[0].get()),
-                        localVars, param_names);
-    if (!result) {
-        llvm::errs()
-            << "Error: Failed to generate first Summand in Factor.\n";
-        return nullptr;
-    }
-
-    // Итерируемся по оставшимся Summands и операторам
-    for (size_t i = 1; i < factor->summands.size(); ++i) {
-        if (i - 1 >= factor->operators.size()) {
-            llvm::errs() << "Error: Not enough operators in Factor.\n";
-            break;
-        }
-
-        std::string op = factor->operators[i - 1];
-        llvm::Value *rhs = generateSummand(
-            dynamic_cast<Summand *>(factor->summands[i].get()), localVars,
-            param_names);
-        if (!rhs) {
-            llvm::errs() << "Error: Failed to generate Summand at index "
-                         << i << " in Factor.\n";
+    llvm::Value *
+    generateFactor(const Factor *factor,
+                   std::unordered_map<std::string, llvm::Value *> &localVars,
+                   const std::set<std::string> &param_names) {
+        if (factor->summands.empty()) {
+            llvm::errs() << "Error: Factor contains no Summands.\n";
             return nullptr;
         }
 
-        std::cout << "Processing Factor operator: " << op << "\n";
-
-        // Проверка типов операндов перед операцией
-        if (result->getType() != rhs->getType()) {
-            llvm::errs() << "Error: Type mismatch between operands.\n";
+        // Генерация первого Summand
+        llvm::Value *result =
+            generateSummand(dynamic_cast<Summand *>(factor->summands[0].get()),
+                            localVars, param_names);
+        if (!result) {
+            llvm::errs()
+                << "Error: Failed to generate first Summand in Factor.\n";
             return nullptr;
         }
 
-        // Приведение типов для real (double) и integer
-        if (result->getType()->isIntegerTy() && rhs->getType()->isIntegerTy()) {
-            // Оба операнда типа i32
-            if (op == "*") {
-                result = builder.CreateMul(result, rhs, "multmp_factor");
-            } else if (op == "/") {
-                result = builder.CreateSDiv(result, rhs, "divtmp_factor");
-            } else if (op == "%") {
-                result = builder.CreateSRem(result, rhs, "remtmp_factor");
+        // Итерируемся по оставшимся Summands и операторам
+        for (size_t i = 1; i < factor->summands.size(); ++i) {
+            if (i - 1 >= factor->operators.size()) {
+                llvm::errs() << "Error: Not enough operators in Factor.\n";
+                break;
             }
-        } else if (result->getType()->isIntegerTy()) {
-            // Приводим integer к double (real)
-            result = builder.CreateSIToFP(result, llvm::Type::getDoubleTy(context), "result_cast");
-            if (op == "*") {
-                result = builder.CreateFMul(result, rhs, "multmp_factor");
-            } else if (op == "/") {
-                result = builder.CreateFDiv(result, rhs, "divtmp_factor");
-            } else if (op == "%") {
-                result = builder.CreateFRem(result, rhs, "remtmp_factor");
+
+            std::string op = factor->operators[i - 1];
+            llvm::Value *rhs = generateSummand(
+                dynamic_cast<Summand *>(factor->summands[i].get()), localVars,
+                param_names);
+            if (!rhs) {
+                llvm::errs() << "Error: Failed to generate Summand at index "
+                             << i << " in Factor.\n";
+                return nullptr;
             }
-        } else if (rhs->getType()->isIntegerTy()) {
-            // Приводим integer к double (real)
-            rhs = builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context), "rhs_cast");
-            if (op == "*") {
-                result = builder.CreateFMul(result, rhs, "multmp_factor");
-            } else if (op == "/") {
-                result = builder.CreateFDiv(result, rhs, "divtmp_factor");
-            } else if (op == "%") {
-                result = builder.CreateFRem(result, rhs, "remtmp_factor");
+
+            std::cout << "Processing Factor operator: " << op << "\n";
+
+            // Проверка типов операндов перед операцией
+            if (result->getType() != rhs->getType()) {
+                llvm::errs() << "Error: Type mismatch between operands.\n";
+                return nullptr;
             }
-        } else {
-            // Оба операнда типа double (real)
-            if (op == "*") {
-                result = builder.CreateFMul(result, rhs, "multmp_factor");
-            } else if (op == "/") {
-                result = builder.CreateFDiv(result, rhs, "divtmp_factor");
-            } else if (op == "%") {
-                result = builder.CreateFRem(result, rhs, "remtmp_factor");
+
+            // Приведение типов для real (double) и integer
+            if (result->getType()->isIntegerTy() &&
+                rhs->getType()->isIntegerTy()) {
+                // Оба операнда типа i32
+                if (op == "*") {
+                    result = builder.CreateMul(result, rhs, "multmp_factor");
+                } else if (op == "/") {
+                    result = builder.CreateSDiv(result, rhs, "divtmp_factor");
+                } else if (op == "%") {
+                    result = builder.CreateSRem(result, rhs, "remtmp_factor");
+                }
+            } else if (result->getType()->isIntegerTy()) {
+                // Приводим integer к double (real)
+                result = builder.CreateSIToFP(
+                    result, llvm::Type::getDoubleTy(context), "result_cast");
+                if (op == "*") {
+                    result = builder.CreateFMul(result, rhs, "multmp_factor");
+                } else if (op == "/") {
+                    result = builder.CreateFDiv(result, rhs, "divtmp_factor");
+                } else if (op == "%") {
+                    result = builder.CreateFRem(result, rhs, "remtmp_factor");
+                }
+            } else if (rhs->getType()->isIntegerTy()) {
+                // Приводим integer к double (real)
+                rhs = builder.CreateSIToFP(
+                    rhs, llvm::Type::getDoubleTy(context), "rhs_cast");
+                if (op == "*") {
+                    result = builder.CreateFMul(result, rhs, "multmp_factor");
+                } else if (op == "/") {
+                    result = builder.CreateFDiv(result, rhs, "divtmp_factor");
+                } else if (op == "%") {
+                    result = builder.CreateFRem(result, rhs, "remtmp_factor");
+                }
+            } else {
+                // Оба операнда типа double (real)
+                if (op == "*") {
+                    result = builder.CreateFMul(result, rhs, "multmp_factor");
+                } else if (op == "/") {
+                    result = builder.CreateFDiv(result, rhs, "divtmp_factor");
+                } else if (op == "%") {
+                    result = builder.CreateFRem(result, rhs, "remtmp_factor");
+                }
             }
         }
+
+        return result;
     }
-
-    return result;
-}
-
 
     // Функция для генерации Summand
     llvm::Value *
@@ -1189,178 +1288,197 @@ generateFactor(const Factor *factor,
     }
 
     // Функция для генерации Primary
-llvm::Value *
-generatePrimary(const Primary *primary,
-                std::unordered_map<std::string, llvm::Value *> &localVars,
-                const std::set<std::string> &param_names) {
-    // Обработка узла литерала
-    if (auto literal =
-            dynamic_cast<LiteralPrimary *>(primary->child.get())) {
-        switch (literal->type) {
-        case LiteralPrimary::LiteralType::Integer: {
-            llvm::outs()
-                << "Generating integer literal: " << literal->intValue
-                << "\n";
-            return llvm::ConstantInt::get(builder.getInt32Ty(),
-                                          literal->intValue, true);
-        }
-        case LiteralPrimary::LiteralType::Real: {
-            llvm::outs()
-                << "Generating real literal: " << literal->realValue
-                << "\n";
-            return llvm::ConstantFP::get(builder.getDoubleTy(),
-                                         literal->realValue);
-        }
-        case LiteralPrimary::LiteralType::Boolean: {
-            llvm::outs() << "Generating boolean literal: "
-                         << (literal->boolValue ? "true" : "false") << "\n";
-            return llvm::ConstantInt::get(builder.getInt1Ty(),
-                                          literal->boolValue);
-        }
-        default:
-            llvm::errs() << "Error: Unsupported literal type.\n";
-            return nullptr;
-        }
-    }
-
-    // Обработка модифицируемого узла
-    if (auto modifiable =
-            dynamic_cast<ModifiablePrimary *>(primary->child.get())) {
-        auto identifier =
-            dynamic_cast<Identifier *>(modifiable->identifier.get());
-        if (identifier) {
-            // Очистка имени идентификатора
-            std::string name = sanitizeName(identifier->name);
-
-            if (arrNames.count(name) > 0) {
-                // Обрабатываем выражение индекса (arr[4])
-                auto indexExpr = dynamic_cast<Expression*>(modifiable->expression.get());
-                llvm::Value *index = generateExpression(indexExpr, localVars, param_names);
-                if (!index) {
-                    llvm::errs() << "Error: Failed to generate index expression for array access.\n";
-                    return nullptr;
-                }
-
-                // Получаем тип массива из arrNames
-                llvm::Type *arrElemType = arrNames.at(name); // Тип элемента массива
-
-                // В зависимости от типа массива, выбираем соответствующую функцию
-                if (arrElemType->isIntegerTy(32)) { // i32
-                    llvm::Function *getIntFunc = getIntFunction;
-                    if (!getIntFunc) {
-                        llvm::errs() << "Error: getInt function is not available.\n";
-                        return nullptr;
-                    }
-
-                    llvm::Value *arrayPtr = localVars[name]; // Указатель на массив
-                    if (!arrayPtr->getType()->isPointerTy()) {
-                        llvm::errs() << "Error: Expected pointer type for array.\n";
-                        return nullptr;
-                    }
-
-                    std::vector<llvm::Value*> args;
-                    args.push_back(arrayPtr);  // указатель на массив
-                    args.push_back(index);     // индекс элемента
-                    return builder.CreateCall(getIntFunc, args); // Получаем элемент массива
-                }
-                else if (arrElemType->isDoubleTy()) { // double
-                    llvm::Function *getRealFunc = getRealFunction; // Функция для real
-                    if (!getRealFunc) {
-                        llvm::errs() << "Error: getReal function is not available.\n";
-                        return nullptr;
-                    }
-
-                    llvm::Value *arrayPtr = localVars[name]; // Указатель на массив
-                    if (!arrayPtr->getType()->isPointerTy()) {
-                        llvm::errs() << "Error: Expected pointer type for array.\n";
-                        return nullptr;
-                    }
-
-                    std::vector<llvm::Value*> args;
-                    args.push_back(arrayPtr);  // указатель на массив
-                    args.push_back(index);     // индекс элемента
-                    return builder.CreateCall(getRealFunc, args); // Получаем элемент массива
-                }
-                else if (arrElemType->isIntegerTy(1)) { // boolean
-                    llvm::Function *getBoolFunc = getBoolFunction; // Функция для boolean
-                    if (!getBoolFunc) {
-                        llvm::errs() << "Error: getBool function is not available.\n";
-                        return nullptr;
-                    }
-
-                    llvm::Value *arrayPtr = localVars[name]; // Указатель на массив
-                    if (!arrayPtr->getType()->isPointerTy()) {
-                        llvm::errs() << "Error: Expected pointer type for array.\n";
-                        return nullptr;
-                    }
-
-                    std::vector<llvm::Value*> args;
-                    args.push_back(arrayPtr);  // указатель на массив
-                    args.push_back(index);     // индекс элемента
-                    return builder.CreateCall(getBoolFunc, args); // Получаем элемент массива
-                }
-                else {
-                    llvm::errs() << "Error: Unsupported array element type.\n";
-                    return nullptr;
-                }
-            }
-            else {
-                // Обработка обычных переменных
+    llvm::Value *
+    generatePrimary(const Primary *primary,
+                    std::unordered_map<std::string, llvm::Value *> &localVars,
+                    const std::set<std::string> &param_names) {
+        // Обработка узла литерала
+        if (auto literal =
+                dynamic_cast<LiteralPrimary *>(primary->child.get())) {
+            switch (literal->type) {
+            case LiteralPrimary::LiteralType::Integer: {
                 llvm::outs()
-                    << "Generating Primary for identifier: " << name << "\n";
+                    << "Generating integer literal: " << literal->intValue
+                    << "\n";
+                return llvm::ConstantInt::get(builder.getInt32Ty(),
+                                              literal->intValue, true);
+            }
+            case LiteralPrimary::LiteralType::Real: {
+                llvm::outs()
+                    << "Generating real literal: " << literal->realValue
+                    << "\n";
+                return llvm::ConstantFP::get(builder.getDoubleTy(),
+                                             literal->realValue);
+            }
+            case LiteralPrimary::LiteralType::Boolean: {
+                llvm::outs() << "Generating boolean literal: "
+                             << (literal->boolValue ? "true" : "false") << "\n";
+                return llvm::ConstantInt::get(builder.getInt1Ty(),
+                                              literal->boolValue);
+            }
+            default:
+                llvm::errs() << "Error: Unsupported literal type.\n";
+                return nullptr;
+            }
+        }
 
-                llvm::Value *var = nullptr;
-                // Проверка локальных переменных
-                auto it = localVars.find(name);
-                if (it != localVars.end()) {
-                    var = it->second;
-                    if (!var) {
-                        llvm::errs() << "Error: Variable " << name
-                                     << " in localVars is nullptr.\n";
+        // Обработка модифицируемого узла
+        if (auto modifiable =
+                dynamic_cast<ModifiablePrimary *>(primary->child.get())) {
+            auto identifier =
+                dynamic_cast<Identifier *>(modifiable->identifier.get());
+            if (identifier) {
+                // Очистка имени идентификатора
+                std::string name = sanitizeName(identifier->name);
+
+                if (arrNames.count(name) > 0) {
+                    // Обрабатываем выражение индекса (arr[4])
+                    auto indexExpr = dynamic_cast<Expression *>(
+                        modifiable->expression.get());
+                    llvm::Value *index =
+                        generateExpression(indexExpr, localVars, param_names);
+                    if (!index) {
+                        llvm::errs() << "Error: Failed to generate index "
+                                        "expression for array access.\n";
                         return nullptr;
                     }
 
-                    if (auto allocaInst =
-                            llvm::dyn_cast<llvm::AllocaInst>(var)) {
-                        llvm::Type *varType = allocaInst->getAllocatedType();
-                        llvm::Value *loadedVal =
-                            builder.CreateLoad(varType, var, name);
-                        llvm::outs()
-                            << "Loaded value from variable: " << name << "\n";
-                        return loadedVal;
+                    // Получаем тип массива из arrNames
+                    llvm::Type *arrElemType =
+                        arrNames.at(name); // Тип элемента массива
+
+                    // В зависимости от типа массива, выбираем соответствующую
+                    // функцию
+                    if (arrElemType->isIntegerTy(32)) { // i32
+                        llvm::Function *getIntFunc = getIntFunction;
+                        if (!getIntFunc) {
+                            llvm::errs()
+                                << "Error: getInt function is not available.\n";
+                            return nullptr;
+                        }
+
+                        llvm::Value *arrayPtr =
+                            localVars[name]; // Указатель на массив
+                        if (!arrayPtr->getType()->isPointerTy()) {
+                            llvm::errs()
+                                << "Error: Expected pointer type for array.\n";
+                            return nullptr;
+                        }
+
+                        std::vector<llvm::Value *> args;
+                        args.push_back(arrayPtr); // указатель на массив
+                        args.push_back(index); // индекс элемента
+                        return builder.CreateCall(
+                            getIntFunc, args); // Получаем элемент массива
+                    } else if (arrElemType->isDoubleTy()) { // double
+                        llvm::Function *getRealFunc =
+                            getRealFunction; // Функция для real
+                        if (!getRealFunc) {
+                            llvm::errs() << "Error: getReal function is not "
+                                            "available.\n";
+                            return nullptr;
+                        }
+
+                        llvm::Value *arrayPtr =
+                            localVars[name]; // Указатель на массив
+                        if (!arrayPtr->getType()->isPointerTy()) {
+                            llvm::errs()
+                                << "Error: Expected pointer type for array.\n";
+                            return nullptr;
+                        }
+
+                        std::vector<llvm::Value *> args;
+                        args.push_back(arrayPtr); // указатель на массив
+                        args.push_back(index); // индекс элемента
+                        return builder.CreateCall(
+                            getRealFunc, args); // Получаем элемент массива
+                    } else if (arrElemType->isIntegerTy(1)) { // boolean
+                        llvm::Function *getBoolFunc =
+                            getBoolFunction; // Функция для boolean
+                        if (!getBoolFunc) {
+                            llvm::errs() << "Error: getBool function is not "
+                                            "available.\n";
+                            return nullptr;
+                        }
+
+                        llvm::Value *arrayPtr =
+                            localVars[name]; // Указатель на массив
+                        if (!arrayPtr->getType()->isPointerTy()) {
+                            llvm::errs()
+                                << "Error: Expected pointer type for array.\n";
+                            return nullptr;
+                        }
+
+                        std::vector<llvm::Value *> args;
+                        args.push_back(arrayPtr); // указатель на массив
+                        args.push_back(index); // индекс элемента
+                        return builder.CreateCall(
+                            getBoolFunc, args); // Получаем элемент массива
                     } else {
-                        llvm::errs() << "Error: Variable " << name
-                                     << " is not an AllocaInst.\n";
+                        llvm::errs()
+                            << "Error: Unsupported array element type.\n";
                         return nullptr;
                     }
-                }
-                // Проверка параметров функции
-                else if (param_names.find(name) != param_names.end()) {
-                    llvm::Function *function =
-                        builder.GetInsertBlock()->getParent();
-                    for (auto &arg : function->args()) {
-                        if (arg.getName() == name) {
+                } else {
+                    // Обработка обычных переменных
+                    llvm::outs()
+                        << "Generating Primary for identifier: " << name
+                        << "\n";
+
+                    llvm::Value *var = nullptr;
+                    // Проверка локальных переменных
+                    auto it = localVars.find(name);
+                    if (it != localVars.end()) {
+                        var = it->second;
+                        if (!var) {
+                            llvm::errs() << "Error: Variable " << name
+                                         << " in localVars is nullptr.\n";
+                            return nullptr;
+                        }
+
+                        if (auto allocaInst =
+                                llvm::dyn_cast<llvm::AllocaInst>(var)) {
+                            llvm::Type *varType =
+                                allocaInst->getAllocatedType();
+                            llvm::Value *loadedVal =
+                                builder.CreateLoad(varType, var, name);
                             llvm::outs()
-                                << "Accessing parameter: " << name << "\n";
-                            return &arg; // Возвращаем аргумент напрямую
+                                << "Loaded value from variable: " << name
+                                << "\n";
+                            return loadedVal;
+                        } else {
+                            llvm::errs() << "Error: Variable " << name
+                                         << " is not an AllocaInst.\n";
+                            return nullptr;
                         }
                     }
-                    llvm::errs() << "Error: Parameter " << name
-                                 << " not found in function arguments.\n";
-                    return nullptr;
-                } else {
-                    llvm::errs() << "Error: Undefined variable or identifier '"
-                                 << name << "'.\n";
-                    return nullptr;
+                    // Проверка параметров функции
+                    else if (param_names.find(name) != param_names.end()) {
+                        llvm::Function *function =
+                            builder.GetInsertBlock()->getParent();
+                        for (auto &arg : function->args()) {
+                            if (arg.getName() == name) {
+                                llvm::outs()
+                                    << "Accessing parameter: " << name << "\n";
+                                return &arg; // Возвращаем аргумент напрямую
+                            }
+                        }
+                        llvm::errs() << "Error: Parameter " << name
+                                     << " not found in function arguments.\n";
+                        return nullptr;
+                    } else {
+                        llvm::errs()
+                            << "Error: Undefined variable or identifier '"
+                            << name << "'.\n";
+                        return nullptr;
+                    }
                 }
             }
         }
+
+        llvm::errs() << "Error: Primary node processing failed.\n";
+        return nullptr;
     }
-
-    llvm::errs() << "Error: Primary node processing failed.\n";
-    return nullptr;
-}
-
 
     // Функция для парсинга параметров
     void parseParameters(const RoutineDeclaration *routine,
@@ -1484,105 +1602,105 @@ generatePrimary(const Primary *primary,
                                module.get());
     }
     // Добавьте этот метод в приватную секцию класса IRGenerator
- void generateForLoop(const ForLoop *forLoop,
-                     std::unordered_map<std::string, llvm::Value *> &localVars,
-                     const std::set<std::string> &param_names) {
+    void
+    generateForLoop(const ForLoop *forLoop,
+                    std::unordered_map<std::string, llvm::Value *> &localVars,
+                    const std::set<std::string> &param_names) {
 
-    llvm::outs() << "Generating ForLoop...\n";
+        llvm::outs() << "Generating ForLoop...\n";
 
-    // Генерация начального и конечного значений диапазона
-    llvm::Value *startVal = generateExpression(
-        dynamic_cast<Expression *>(
-            dynamic_cast<Range *>(forLoop->range.get())->start.get()),
-        localVars, param_names);
-    llvm::Value *endVal = generateExpression(
-        dynamic_cast<Expression *>(
-            dynamic_cast<Range *>(forLoop->range.get())->end.get()),
-        localVars, param_names);
+        // Генерация начального и конечного значений диапазона
+        llvm::Value *startVal = generateExpression(
+            dynamic_cast<Expression *>(
+                dynamic_cast<Range *>(forLoop->range.get())->start.get()),
+            localVars, param_names);
+        llvm::Value *endVal = generateExpression(
+            dynamic_cast<Expression *>(
+                dynamic_cast<Range *>(forLoop->range.get())->end.get()),
+            localVars, param_names);
 
-    if (!startVal || !endVal) {
-        llvm::errs() << "Error: Failed to generate range for ForLoop.\n";
-        return;
-    }
+        if (!startVal || !endVal) {
+            llvm::errs() << "Error: Failed to generate range for ForLoop.\n";
+            return;
+        }
 
-    // Создание переменной цикла
-    llvm::Function *function = builder.GetInsertBlock()->getParent();
-    llvm::AllocaInst *loopVarAlloca =
-        builder.CreateAlloca(builder.getInt32Ty(), nullptr, "i");
-    builder.CreateStore(startVal, loopVarAlloca);
-    llvm::outs() << "Loop variable 'i' allocated and initialized.\n";
+        // Создание переменной цикла
+        llvm::Function *function = builder.GetInsertBlock()->getParent();
+        llvm::AllocaInst *loopVarAlloca =
+            builder.CreateAlloca(builder.getInt32Ty(), nullptr, "i");
+        builder.CreateStore(startVal, loopVarAlloca);
+        llvm::outs() << "Loop variable 'i' allocated and initialized.\n";
 
-    // Добавляем переменную цикла в `localVars`
-    localVars["i"] = loopVarAlloca;
+        // Добавляем переменную цикла в `localVars`
+        localVars["i"] = loopVarAlloca;
 
-    // Создание блоков цикла
-    llvm::BasicBlock *loopCondBB =
-        llvm::BasicBlock::Create(context, "loopcond", function);
-    llvm::BasicBlock *loopBodyBB =
-        llvm::BasicBlock::Create(context, "loopbody", function);
-    llvm::BasicBlock *loopEndBB =
-        llvm::BasicBlock::Create(context, "loopend", function);
+        // Создание блоков цикла
+        llvm::BasicBlock *loopCondBB =
+            llvm::BasicBlock::Create(context, "loopcond", function);
+        llvm::BasicBlock *loopBodyBB =
+            llvm::BasicBlock::Create(context, "loopbody", function);
+        llvm::BasicBlock *loopEndBB =
+            llvm::BasicBlock::Create(context, "loopend", function);
 
-    // Переход к блоку условия
-    builder.CreateBr(loopCondBB);
+        // Переход к блоку условия
+        builder.CreateBr(loopCondBB);
 
-    // Генерация условия
-    builder.SetInsertPoint(loopCondBB);
-    llvm::Value *currentVal =
-        builder.CreateLoad(builder.getInt32Ty(), loopVarAlloca, "i");
-    llvm::outs() << "Current value of 'i': ";
-    currentVal->print(llvm::outs());
-    llvm::outs() << "\n";
-    llvm::Value *cmp = builder.CreateICmpSLE(currentVal, endVal, "loopcmp");
-    llvm::outs() << "Loop comparison result: ";
-    cmp->print(llvm::outs());
-    llvm::outs() << "\n";
-    builder.CreateCondBr(cmp, loopBodyBB, loopEndBB);
+        // Генерация условия
+        builder.SetInsertPoint(loopCondBB);
+        llvm::Value *currentVal =
+            builder.CreateLoad(builder.getInt32Ty(), loopVarAlloca, "i");
+        llvm::outs() << "Current value of 'i': ";
+        currentVal->print(llvm::outs());
+        llvm::outs() << "\n";
+        llvm::Value *cmp = builder.CreateICmpSLE(currentVal, endVal, "loopcmp");
+        llvm::outs() << "Loop comparison result: ";
+        cmp->print(llvm::outs());
+        llvm::outs() << "\n";
+        builder.CreateCondBr(cmp, loopBodyBB, loopEndBB);
 
-    // Генерация тела цикла
-    builder.SetInsertPoint(loopBodyBB);
-    llvm::outs() << "Generating loop body...\n";
+        // Генерация тела цикла
+        builder.SetInsertPoint(loopBodyBB);
+        llvm::outs() << "Generating loop body...\n";
 
-    auto body = dynamic_cast<Body *>(forLoop->body.get());
-    if (!body) {
-        llvm::errs() << "Error: ForLoop body is invalid.\n";
-        return;
-    }
+        auto body = dynamic_cast<Body *>(forLoop->body.get());
+        if (!body) {
+            llvm::errs() << "Error: ForLoop body is invalid.\n";
+            return;
+        }
 
-    // Обрабатываем каждое утверждение в теле цикла
-    for (const auto &stmt : body->statements) {
-        if (auto statementNode = dynamic_cast<Statement *>(stmt.get())) {
-            auto childNode = statementNode->child.get();
+        // Обрабатываем каждое утверждение в теле цикла
+        for (const auto &stmt : body->statements) {
+            if (auto statementNode = dynamic_cast<Statement *>(stmt.get())) {
+                auto childNode = statementNode->child.get();
 
-            if (auto assignStmt = dynamic_cast<Assignment *>(childNode)) {
-                llvm::outs() << "Processing Assignment in loop body.\n";
+                if (auto assignStmt = dynamic_cast<Assignment *>(childNode)) {
+                    llvm::outs() << "Processing Assignment in loop body.\n";
 
-                // Вызов функции для обработки присваивания
-                generateAssignment(assignStmt, localVars, param_names);
-            } else {
-                llvm::outs() << "Warning: Unrecognized statement type in "
-                                "loop body.\n";
+                    // Вызов функции для обработки присваивания
+                    generateAssignment(assignStmt, localVars, param_names);
+                } else {
+                    llvm::outs() << "Warning: Unrecognized statement type in "
+                                    "loop body.\n";
+                }
             }
         }
+
+        // Инкремент переменной цикла
+        llvm::Value *nextVal = builder.CreateAdd(
+            currentVal, llvm::ConstantInt::get(builder.getInt32Ty(), 1),
+            "nextval");
+        builder.CreateStore(nextVal, loopVarAlloca);
+        llvm::outs() << "Loop variable 'i' incremented to: ";
+        nextVal->print(llvm::outs());
+        llvm::outs() << "\n";
+
+        // Переход обратно к условию
+        builder.CreateBr(loopCondBB);
+
+        // Генерация блока выхода
+        builder.SetInsertPoint(loopEndBB);
+        llvm::outs() << "ForLoop generation completed.\n";
     }
-
-    // Инкремент переменной цикла
-    llvm::Value *nextVal = builder.CreateAdd(
-        currentVal, llvm::ConstantInt::get(builder.getInt32Ty(), 1),
-        "nextval");
-    builder.CreateStore(nextVal, loopVarAlloca);
-    llvm::outs() << "Loop variable 'i' incremented to: ";
-    nextVal->print(llvm::outs());
-    llvm::outs() << "\n";
-
-    // Переход обратно к условию
-    builder.CreateBr(loopCondBB);
-
-    // Генерация блока выхода
-    builder.SetInsertPoint(loopEndBB);
-    llvm::outs() << "ForLoop generation completed.\n";
-}
-
 
     // Функция для генерации TypeDeclaration (record)
     void generateRecord(const TypeDeclaration *typeDecl) {
@@ -1674,78 +1792,92 @@ generatePrimary(const Primary *primary,
         }
     }
 
-     void generateArray(const VariableDeclaration* varDecl,
-                  std::unordered_map<std::string, llvm::Value*> &localVars) {
-    // Извлекаем имя переменной
-    auto identifier = dynamic_cast<Identifier*>(varDecl->identifier.get());
-    if (!identifier) {
-        llvm::errs() << "Ошибка: VariableDeclaration не содержит Identifier.\n";
-        return;
-    }
-    std::string varName = sanitizeName(identifier->name);
+    void
+    generateArray(const VariableDeclaration *varDecl,
+                  std::unordered_map<std::string, llvm::Value *> &localVars) {
+        // Извлекаем имя переменной
+        auto identifier = dynamic_cast<Identifier *>(varDecl->identifier.get());
+        if (!identifier) {
+            llvm::errs()
+                << "Ошибка: VariableDeclaration не содержит Identifier.\n";
+            return;
+        }
+        std::string varName = sanitizeName(identifier->name);
 
-    // Извлекаем тип переменной
-    auto typeNode = dynamic_cast<Type*>(varDecl->type.get());
-    if (!typeNode || !typeNode->child) {
-        llvm::errs() << "Ошибка: VariableDeclaration не содержит Type или child.\n";
-        return;
-    }
+        // Извлекаем тип переменной
+        auto typeNode = dynamic_cast<Type *>(varDecl->type.get());
+        if (!typeNode || !typeNode->child) {
+            llvm::errs()
+                << "Ошибка: VariableDeclaration не содержит Type или child.\n";
+            return;
+        }
 
-    // Проверяем, что тип - это ArrayType
-    auto arrayTypeNode = dynamic_cast<ArrayType*>(typeNode->child.get());
+        // Проверяем, что тип - это ArrayType
+        auto arrayTypeNode = dynamic_cast<ArrayType *>(typeNode->child.get());
 
-    // Извлекаем размер массива из Expression
-    auto sizeValue = generateExpression(dynamic_cast<Expression*>(arrayTypeNode->expression.get()), localVars, {});
+        // Извлекаем размер массива из Expression
+        auto sizeValue = generateExpression(
+            dynamic_cast<Expression *>(arrayTypeNode->expression.get()),
+            localVars, {});
 
-    if (!sizeValue) {
-        llvm::errs() << "Ошибка: Не удалось сгенерировать значение размера массива.\n";
-        return;
-    }
+        if (!sizeValue) {
+            llvm::errs() << "Ошибка: Не удалось сгенерировать значение размера "
+                            "массива.\n";
+            return;
+        }
 
-    int arraySize = llvm::cast<llvm::ConstantInt>(sizeValue)->getSExtValue();
+        int arraySize =
+            llvm::cast<llvm::ConstantInt>(sizeValue)->getSExtValue();
 
-    // Извлекаем тип элементов массива
-    auto elemTypeNode = dynamic_cast<Type*>(arrayTypeNode->type.get());
+        // Извлекаем тип элементов массива
+        auto elemTypeNode = dynamic_cast<Type *>(arrayTypeNode->type.get());
 
-    llvm::Type* elemLLVMType = mapType(elemTypeNode->child.get());
+        llvm::Type *elemLLVMType = mapType(elemTypeNode->child.get());
         arrNames[varName] = elemLLVMType;
 
-    // Создаём тип массива в LLVM
-    llvm::ArrayType* llvmArrayType = llvm::ArrayType::get(elemLLVMType, arraySize);
+        // Создаём тип массива в LLVM
+        llvm::ArrayType *llvmArrayType =
+            llvm::ArrayType::get(elemLLVMType, arraySize);
 
-    // Создаём alloca для массива (выделение памяти на стеке)
-    llvm::AllocaInst* arrayAlloca = builder.CreateAlloca(llvmArrayType, nullptr, varName);
-    llvm::outs() << "Локальный массив '" << varName << "' выделен на стеке.\n";
+        // Создаём alloca для массива (выделение памяти на стеке)
+        llvm::AllocaInst *arrayAlloca =
+            builder.CreateAlloca(llvmArrayType, nullptr, varName);
+        llvm::outs() << "Локальный массив '" << varName
+                     << "' выделен на стеке.\n";
 
-    // Добавляем переменную в локальные переменные
-    localVars[varName] = arrayAlloca;
-}
+        // Добавляем переменную в локальные переменные
+        localVars[varName] = arrayAlloca;
+    }
 
     //функции генерации вставок/ получения для массивов
     void generateInsertionIntFunction() {
         // Тип для индекса и значения
-        llvm::Type *i32Type = llvm::Type::getInt32Ty(context);  // Тип для индекса и значения
+        llvm::Type *i32Type =
+            llvm::Type::getInt32Ty(context); // Тип для индекса и значения
 
         // Тип возвращаемого значения функции - void
         llvm::FunctionType *funcType = llvm::FunctionType::get(
-            llvm::Type::getVoidTy(context), {llvm::PointerType::get(i32Type, 0), i32Type, i32Type}, false);
+            llvm::Type::getVoidTy(context),
+            {llvm::PointerType::get(i32Type, 0), i32Type, i32Type}, false);
 
         // Создание функции с внешней линковкой (глобальная)
         llvm::Function *insertFunction = llvm::Function::Create(
             funcType, llvm::Function::ExternalLinkage, "insertInt", *module);
 
         // Создание начального блока для тела функции
-        llvm::BasicBlock *entry = llvm::BasicBlock::Create(context, "entry", insertFunction);
+        llvm::BasicBlock *entry =
+            llvm::BasicBlock::Create(context, "entry", insertFunction);
         builder.SetInsertPoint(entry);
 
         // Получение параметров функции
         llvm::Function::arg_iterator args = insertFunction->arg_begin();
-        llvm::Value *arrayPtr = args++;  // Указатель на массив
+        llvm::Value *arrayPtr = args++; // Указатель на массив
         llvm::Value *index = args++;    // Индекс
-        llvm::Value *value = args++;    // Значение для вставки
+        llvm::Value *value = args++; // Значение для вставки
 
         // Создание GEP с указанием типа элемента массива (i32)
-        llvm::Value *elementPtr = builder.CreateGEP(i32Type, arrayPtr, index, "elementPtr");
+        llvm::Value *elementPtr =
+            builder.CreateGEP(i32Type, arrayPtr, index, "elementPtr");
 
         // Сохранение значения в массив
         builder.CreateStore(value, elementPtr);
@@ -1759,7 +1891,8 @@ generatePrimary(const Primary *primary,
 
     void generateGetIntFunction() {
         // Тип для индекса и значения
-        llvm::Type *i32Type = llvm::Type::getInt32Ty(context);  // Тип для индекса и значения
+        llvm::Type *i32Type =
+            llvm::Type::getInt32Ty(context); // Тип для индекса и значения
 
         // Тип возвращаемого значения функции - i32
         llvm::FunctionType *funcType = llvm::FunctionType::get(
@@ -1770,19 +1903,22 @@ generatePrimary(const Primary *primary,
             funcType, llvm::Function::ExternalLinkage, "getInt", *module);
 
         // Создание начального блока для тела функции
-        llvm::BasicBlock *entry = llvm::BasicBlock::Create(context, "entry", getFunction);
+        llvm::BasicBlock *entry =
+            llvm::BasicBlock::Create(context, "entry", getFunction);
         builder.SetInsertPoint(entry);
 
         // Получение параметров функции
         llvm::Function::arg_iterator args = getFunction->arg_begin();
-        llvm::Value *arrayPtr = args++;  // Указатель на массив
+        llvm::Value *arrayPtr = args++; // Указатель на массив
         llvm::Value *index = args++;    // Индекс
 
         // Создание GEP с указанием типа элемента массива (i32)
-        llvm::Value *elementPtr = builder.CreateGEP(i32Type, arrayPtr, index, "elementPtr");
+        llvm::Value *elementPtr =
+            builder.CreateGEP(i32Type, arrayPtr, index, "elementPtr");
 
         // Загрузка значения из массива
-        llvm::Value *loadedValue = builder.CreateLoad(i32Type, elementPtr, "loadedValue");
+        llvm::Value *loadedValue =
+            builder.CreateLoad(i32Type, elementPtr, "loadedValue");
 
         // Возвращаем загруженное значение
         builder.CreateRet(loadedValue);
@@ -1792,30 +1928,34 @@ generatePrimary(const Primary *primary,
 
     void generateInsertionBoolFunction() {
         // Тип для индекса и значения
-        llvm::Type *i1Type = llvm::Type::getInt1Ty(context);  // Тип для значения boolean
+        llvm::Type *i1Type =
+            llvm::Type::getInt1Ty(context); // Тип для значения boolean
 
         // Тип возвращаемого значения функции - void
-        llvm::FunctionType *funcType = llvm::FunctionType::get(
-            llvm::Type::getVoidTy(context),
-            {llvm::PointerType::get(i1Type, 0), llvm::Type::getInt32Ty(context), i1Type},
-            false);
+        llvm::FunctionType *funcType =
+            llvm::FunctionType::get(llvm::Type::getVoidTy(context),
+                                    {llvm::PointerType::get(i1Type, 0),
+                                     llvm::Type::getInt32Ty(context), i1Type},
+                                    false);
 
         // Создание функции с внешней линковкой (глобальная)
         llvm::Function *insertFunction = llvm::Function::Create(
             funcType, llvm::Function::ExternalLinkage, "insertBool", *module);
 
         // Создание начального блока для тела функции
-        llvm::BasicBlock *entry = llvm::BasicBlock::Create(context, "entry", insertFunction);
+        llvm::BasicBlock *entry =
+            llvm::BasicBlock::Create(context, "entry", insertFunction);
         builder.SetInsertPoint(entry);
 
         // Получение параметров функции
         llvm::Function::arg_iterator args = insertFunction->arg_begin();
-        llvm::Value *arrayPtr = args++;  // Указатель на массив
+        llvm::Value *arrayPtr = args++; // Указатель на массив
         llvm::Value *index = args++;    // Индекс
-        llvm::Value *value = args++;    // Значение для вставки
+        llvm::Value *value = args++; // Значение для вставки
 
         // Создание GEP с указанием типа элемента массива (i1 для boolean)
-        llvm::Value *elementPtr = builder.CreateGEP(i1Type, arrayPtr, index, "elementPtr");
+        llvm::Value *elementPtr =
+            builder.CreateGEP(i1Type, arrayPtr, index, "elementPtr");
 
         // Сохранение значения в массив
         builder.CreateStore(value, elementPtr);
@@ -1829,30 +1969,37 @@ generatePrimary(const Primary *primary,
 
     void generateGetBoolFunction() {
         // Тип для индекса и значения
-        llvm::Type *i1Type = llvm::Type::getInt1Ty(context);  // Тип для значения boolean
+        llvm::Type *i1Type =
+            llvm::Type::getInt1Ty(context); // Тип для значения boolean
 
         // Тип возвращаемого значения функции - i1 (boolean)
-        llvm::FunctionType *funcType = llvm::FunctionType::get(
-            i1Type, {llvm::PointerType::get(i1Type, 0), llvm::Type::getInt32Ty(context)}, false);
+        llvm::FunctionType *funcType =
+            llvm::FunctionType::get(i1Type,
+                                    {llvm::PointerType::get(i1Type, 0),
+                                     llvm::Type::getInt32Ty(context)},
+                                    false);
 
         // Создание функции с внешней линковкой (глобальная)
         llvm::Function *getFunction = llvm::Function::Create(
             funcType, llvm::Function::ExternalLinkage, "getBool", *module);
 
         // Создание начального блока для тела функции
-        llvm::BasicBlock *entry = llvm::BasicBlock::Create(context, "entry", getFunction);
+        llvm::BasicBlock *entry =
+            llvm::BasicBlock::Create(context, "entry", getFunction);
         builder.SetInsertPoint(entry);
 
         // Получение параметров функции
         llvm::Function::arg_iterator args = getFunction->arg_begin();
-        llvm::Value *arrayPtr = args++;  // Указатель на массив
+        llvm::Value *arrayPtr = args++; // Указатель на массив
         llvm::Value *index = args++;    // Индекс
 
         // Создание GEP с указанием типа элемента массива (i1 для boolean)
-        llvm::Value *elementPtr = builder.CreateGEP(i1Type, arrayPtr, index, "elementPtr");
+        llvm::Value *elementPtr =
+            builder.CreateGEP(i1Type, arrayPtr, index, "elementPtr");
 
         // Загрузка значения из массива
-        llvm::Value *loadedValue = builder.CreateLoad(i1Type, elementPtr, "loadedValue");
+        llvm::Value *loadedValue =
+            builder.CreateLoad(i1Type, elementPtr, "loadedValue");
 
         // Возвращаем загруженное значение
         builder.CreateRet(loadedValue);
@@ -1861,30 +2008,34 @@ generatePrimary(const Primary *primary,
     }
     void generateInsertionRealFunction() {
         // Тип для индекса и значения
-        llvm::Type *f32Type = llvm::Type::getFloatTy(context);  // Тип для значения real (float)
+        llvm::Type *f32Type =
+            llvm::Type::getFloatTy(context); // Тип для значения real (float)
 
         // Тип возвращаемого значения функции - void
-        llvm::FunctionType *funcType = llvm::FunctionType::get(
-            llvm::Type::getVoidTy(context),
-            {llvm::PointerType::get(f32Type, 0), llvm::Type::getInt32Ty(context), f32Type},
-            false);
+        llvm::FunctionType *funcType =
+            llvm::FunctionType::get(llvm::Type::getVoidTy(context),
+                                    {llvm::PointerType::get(f32Type, 0),
+                                     llvm::Type::getInt32Ty(context), f32Type},
+                                    false);
 
         // Создание функции с внешней линковкой (глобальная)
         llvm::Function *insertFunction = llvm::Function::Create(
             funcType, llvm::Function::ExternalLinkage, "insertReal", *module);
 
         // Создание начального блока для тела функции
-        llvm::BasicBlock *entry = llvm::BasicBlock::Create(context, "entry", insertFunction);
+        llvm::BasicBlock *entry =
+            llvm::BasicBlock::Create(context, "entry", insertFunction);
         builder.SetInsertPoint(entry);
 
         // Получение параметров функции
         llvm::Function::arg_iterator args = insertFunction->arg_begin();
-        llvm::Value *arrayPtr = args++;  // Указатель на массив
+        llvm::Value *arrayPtr = args++; // Указатель на массив
         llvm::Value *index = args++;    // Индекс
-        llvm::Value *value = args++;    // Значение для вставки
+        llvm::Value *value = args++; // Значение для вставки
 
         // Создание GEP с указанием типа элемента массива (f32 для real)
-        llvm::Value *elementPtr = builder.CreateGEP(f32Type, arrayPtr, index, "elementPtr");
+        llvm::Value *elementPtr =
+            builder.CreateGEP(f32Type, arrayPtr, index, "elementPtr");
 
         // Сохранение значения в массив
         builder.CreateStore(value, elementPtr);
@@ -1897,30 +2048,37 @@ generatePrimary(const Primary *primary,
     }
     void generateGetRealFunction() {
         // Тип для индекса и значения
-        llvm::Type *f32Type = llvm::Type::getFloatTy(context);  // Тип для значения real (float)
+        llvm::Type *f32Type =
+            llvm::Type::getFloatTy(context); // Тип для значения real (float)
 
         // Тип возвращаемого значения функции - f32 (real)
-        llvm::FunctionType *funcType = llvm::FunctionType::get(
-            f32Type, {llvm::PointerType::get(f32Type, 0), llvm::Type::getInt32Ty(context)}, false);
+        llvm::FunctionType *funcType =
+            llvm::FunctionType::get(f32Type,
+                                    {llvm::PointerType::get(f32Type, 0),
+                                     llvm::Type::getInt32Ty(context)},
+                                    false);
 
         // Создание функции с внешней линковкой (глобальная)
         llvm::Function *getFunction = llvm::Function::Create(
             funcType, llvm::Function::ExternalLinkage, "getReal", *module);
 
         // Создание начального блока для тела функции
-        llvm::BasicBlock *entry = llvm::BasicBlock::Create(context, "entry", getFunction);
+        llvm::BasicBlock *entry =
+            llvm::BasicBlock::Create(context, "entry", getFunction);
         builder.SetInsertPoint(entry);
 
         // Получение параметров функции
         llvm::Function::arg_iterator args = getFunction->arg_begin();
-        llvm::Value *arrayPtr = args++;  // Указатель на массив
+        llvm::Value *arrayPtr = args++; // Указатель на массив
         llvm::Value *index = args++;    // Индекс
 
         // Создание GEP с указанием типа элемента массива (f32 для real)
-        llvm::Value *elementPtr = builder.CreateGEP(f32Type, arrayPtr, index, "elementPtr");
+        llvm::Value *elementPtr =
+            builder.CreateGEP(f32Type, arrayPtr, index, "elementPtr");
 
         // Загрузка значения из массива
-        llvm::Value *loadedValue = builder.CreateLoad(f32Type, elementPtr, "loadedValue");
+        llvm::Value *loadedValue =
+            builder.CreateLoad(f32Type, elementPtr, "loadedValue");
 
         // Возвращаем загруженное значение
         builder.CreateRet(loadedValue);
