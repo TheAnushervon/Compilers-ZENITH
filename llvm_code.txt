@@ -1,15 +1,60 @@
 ; ModuleID = 'MyProgram'
 source_filename = "MyProgram"
 
+@k = global i32 7
+
 declare void @PrintInt(i32)
 
 declare void @PrintReal(double)
 
 declare void @PrintBoolean(i1)
 
-define i32 @sumfunction(i32 %a, i32 %b) {
+define void @insertInt(ptr %0, i32 %1, i32 %2) {
 entry:
-  %s = alloca i32, align 4
-  %s1 = load i32, ptr %s, align 4
-  ret i32 %s1
+  %elementPtr = getelementptr i32, ptr %0, i32 %1
+  store i32 %2, ptr %elementPtr, align 4
+  ret void
+}
+
+define i32 @getInt(ptr %0, i32 %1) {
+entry:
+  %elementPtr = getelementptr i32, ptr %0, i32 %1
+  %loadedValue = load i32, ptr %elementPtr, align 4
+  ret i32 %loadedValue
+}
+
+define i32 @sum(i32 %a, i32 %b) {
+entry:
+  %arr = alloca [10 x i32], align 4
+  %x = alloca i32, align 4
+  store i32 0, ptr %x, align 4
+  call void @insertInt(ptr %arr, i32 0, i32 5)
+  %i = alloca i32, align 4
+  store i32 1, ptr %i, align 4
+  br label %loopcond
+
+loopcond:                                         ; preds = %loopbody, %entry
+  %i1 = load i32, ptr %i, align 4
+  %loopcmp = icmp sle i32 %i1, 9
+  br i1 %loopcmp, label %loopbody, label %loopend
+
+loopbody:                                         ; preds = %loopcond
+  %i2 = load i32, ptr %i, align 4
+  %nextval = add i32 %i1, 1
+  store i32 %nextval, ptr %i, align 4
+  br label %loopcond
+
+loopend:                                          ; preds = %loopcond
+  %0 = call i32 @getInt(ptr %arr, i32 4)
+  store i32 %0, ptr %x, align 4
+  %x3 = load i32, ptr %x, align 4
+  ret i32 %x3
+}
+
+define i32 @main() {
+entry:
+  %k = load i32, ptr @k, align 4
+  %calltmp_routine = call i32 @sum(i32 %k, i32 %k)
+  call void @PrintInt(i32 %calltmp_routine)
+  ret i32 0
 }
