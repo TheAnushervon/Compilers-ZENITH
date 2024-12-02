@@ -143,6 +143,7 @@ class IRGenerator {
     std::unordered_map<std::string, std::string> recordToType;
 
     std::unordered_set<std::string> arrNames;
+    llvm::Function* insertIntFunction = nullptr;
 
     void generateMain(const Program *program) {
         llvm::FunctionType *mainType =
@@ -669,59 +670,96 @@ class IRGenerator {
     }
 
     // Метод для генерации Assignment (Присваивания)
-    void generateAssignment(
-        const Assignment *assignStmt,
-        std::unordered_map<std::string, llvm::Value *> &localVars,
-        const std::set<std::string> &param_names) {
+  void generateAssignment(
+    const Assignment* assignStmt,
+    std::unordered_map<std::string, llvm::Value*>& localVars,
+    const std::set<std::string>& param_names) {
 
-        llvm::outs() << "Generating Assignment...\n";
+    llvm::outs() << "Generating Assignment...\n";
 
-        auto modifiable = dynamic_cast<ModifiablePrimary *>(
-            assignStmt->modifiablePrimary.get());
-        if (!modifiable) {
-            llvm::errs()
-                << "Error: Assignment does not contain ModifiablePrimary.\n";
+    auto modifiable = dynamic_cast<ModifiablePrimary*>(assignStmt->modifiablePrimary.get());
+    if (!modifiable) {
+        llvm::errs() << "Error: Assignment does not contain ModifiablePrimary.\n";
+        return;
+    }
+
+    auto identifier = dynamic_cast<Identifier*>(modifiable->identifier.get());
+    if (!identifier) {
+        llvm::errs() << "Error: ModifiablePrimary does not contain Identifier.\n";
+        return;
+    }
+
+    std::string varName = sanitizeName(identifier->name);
+    llvm::outs() << "Assigning to variable: " << varName << "\n";
+
+    // Проверка, является ли переменная массивом
+    if (arrNames.count(varName) > 0) {
+        auto expArr = dynamic_cast<Expression*>(modifiable->expression.get());
+        if (!expArr) {
+            llvm::errs() << "Error: Expected an expression for array index.\n";
             return;
         }
-        auto identifier =
-            dynamic_cast<Identifier *>(modifiable->identifier.get());
-        if (!identifier) {
-            llvm::errs()
-                << "Error: ModifiablePrimary does not contain Identifier.\n";
+
+        // Генерация значения индекса для массива
+        llvm::Value* index = generateExpression(expArr, localVars, param_names);
+        if (!index) {
+            llvm::errs() << "Error: Failed to generate array index.\n";
             return;
         }
 
-        std::string varName = sanitizeName(identifier->name);
-        llvm::outs() << "Assigning to variable: " << varName << "\n";
+        // Генерация выражения, которое присваивается элементу массива
+        auto assigExpr = dynamic_cast<Expression*>(assignStmt->expression.get());
+        llvm::Value* exprValue = generateExpression(assigExpr, localVars, param_names);
+        if (!exprValue) {
+            llvm::errs() << "Error: Failed to generate assignment expression.\n";
+            return;
+        }
 
-        // Найти переменную в локальных переменных
+        // Получаем указатель на массив
+        auto it = localVars.find(varName);
+        if (it == localVars.end()) {
+            llvm::errs() << "Error: Array " << varName << " not found.\n";
+            return;
+        }
+
+        llvm::AllocaInst* arrayAlloca = llvm::dyn_cast<llvm::AllocaInst>(it->second);
+        if (!arrayAlloca) {
+            llvm::errs() << "Error: Invalid array allocation for " << varName << ".\n";
+            return;
+        }
+
+        llvm::Value* arrPtr = builder.CreateBitCast(arrayAlloca, llvm::PointerType::getUnqual(llvm::Type::getInt32Ty(context)));
+
+        // Вызов insertInt с передачей массива, индекса и значения
+        llvm::Value* args[] = { arrPtr, index, exprValue };
+        builder.CreateCall(insertIntFunction, args);
+    } else {
+        // Обработка обычных переменных
         auto it = localVars.find(varName);
         if (it == localVars.end()) {
             llvm::errs() << "Error: Variable " << varName << " not found.\n";
             return;
         }
 
-        llvm::Value *varAlloca = it->second;
+        llvm::Value* varAlloca = it->second;
 
-        auto expression =
-            dynamic_cast<Expression *>(assignStmt->expression.get());
+        auto expression = dynamic_cast<Expression*>(assignStmt->expression.get());
         if (!expression) {
             llvm::errs() << "Error: Assignment expression is not valid.\n";
             return;
         }
 
-        llvm::Value *exprValue =
-            generateExpression(expression, localVars, param_names);
+        llvm::Value* exprValue = generateExpression(expression, localVars, param_names);
         if (!exprValue) {
-            llvm::errs()
-                << "Error: Failed to generate expression for assignment.\n";
+            llvm::errs() << "Error: Failed to generate expression for assignment.\n";
             return;
         }
 
         builder.CreateStore(exprValue, varAlloca);
-        llvm::outs() << "Assignment completed for variable: " << varName
-                     << "\n";
+        llvm::outs() << "Assignment completed for variable: " << varName << "\n";
     }
+}
+
 
     // Внутри метода generateBody добавьте обработку ForLoop
     void generateBody(const Node *bodyNode,
@@ -1296,6 +1334,7 @@ class IRGenerator {
             if (auto statementNode = dynamic_cast<Statement *>(stmt.get())) {
                 auto childNode = statementNode->child.get();
                 //TODO добавить параметры функци в локальные переменные
+                //TODO перейти на присваивание
                 if (auto assignStmt = dynamic_cast<Assignment *>(childNode)) {
                     llvm::outs() << "Processing Assignment in loop body.\n";
 
@@ -1531,7 +1570,14 @@ class IRGenerator {
 
         // Завершение функции
         builder.CreateRetVoid();
+        insertIntFunction = module->getFunction("insertInt");
 
         llvm::outs() << "Глобальная функция insertInt сгенерирована.\n";
+    }
+    void callInsertInt(llvm::Value* arrPtr, llvm::Value* index, llvm::Value* value) {
+        // Генерация вызова функции insertInt с массивом, индексом и значением
+        llvm::Type* int32Ty = llvm::Type::getInt32Ty(context);
+        llvm::Value* args[] = { arrPtr, index, value };
+        builder.CreateCall(insertIntFunction, args);
     }
 };
