@@ -887,45 +887,53 @@ void generateAssignment(
     }
     // Функция для генерации Relation (Simple [ ( < | <= | > | >= | = | /= )
     // Simple ])
-    llvm::Value *
-    generateRelation(const Relation *rel,
-                     std::unordered_map<std::string, llvm::Value *> &localVars,
-                     const std::set<std::string> &param_names) {
-        if (rel->simples.empty()) {
-            llvm::errs() << "Error: Relation contains no Simples.\n";
-            return nullptr;
+  llvm::Value *
+generateRelation(const Relation *rel,
+                 std::unordered_map<std::string, llvm::Value *> &localVars,
+                 const std::set<std::string> &param_names) {
+    if (rel->simples.empty()) {
+        llvm::errs() << "Error: Relation contains no Simples.\n";
+        return nullptr;
+    }
+
+    // Генерация первого Simple
+    llvm::Value *result =
+        generateSimple(dynamic_cast<Simple *>(rel->simples[0].get()),
+                       localVars, param_names);
+    if (!result) {
+        llvm::errs()
+            << "Error: Failed to generate first Simple in Relation.\n";
+        return nullptr;
+    }
+
+    // Итерируемся по оставшимся Simples и операторам
+    for (size_t i = 1; i < rel->simples.size(); ++i) {
+        if (i - 1 >= rel->operators.size()) {
+            llvm::errs() << "Error: Not enough operators in Relation.\n";
+            break;
         }
 
-        // Генерация первого Simple
-        llvm::Value *result =
-            generateSimple(dynamic_cast<Simple *>(rel->simples[0].get()),
+        std::string op = rel->operators[i - 1];
+        llvm::Value *rhs =
+            generateSimple(dynamic_cast<Simple *>(rel->simples[i].get()),
                            localVars, param_names);
-        if (!result) {
-            llvm::errs()
-                << "Error: Failed to generate first Simple in Relation.\n";
+        if (!rhs) {
+            llvm::errs() << "Error: Failed to generate Simple at index "
+                         << i << " in Relation.\n";
             return nullptr;
         }
 
-        // Итерируемся по оставшимся Simples и операторам
-        for (size_t i = 1; i < rel->simples.size(); ++i) {
-            if (i - 1 >= rel->operators.size()) {
-                llvm::errs() << "Error: Not enough operators in Relation.\n";
-                break;
-            }
+        std::cout << "Processing Relation operator: " << op << "\n";
 
-            std::string op = rel->operators[i - 1];
-            llvm::Value *rhs =
-                generateSimple(dynamic_cast<Simple *>(rel->simples[i].get()),
-                               localVars, param_names);
-            if (!rhs) {
-                llvm::errs() << "Error: Failed to generate Simple at index "
-                             << i << " in Relation.\n";
-                return nullptr;
-            }
+        // Проверка типов операндов перед операцией
+        if (result->getType() != rhs->getType()) {
+            llvm::errs() << "Error: Type mismatch between operands.\n";
+            return nullptr;
+        }
 
-            std::cout << "Processing Relation operator: " << op << "\n";
-
-            // Обработка операторов сравнения
+        // Приведение типов для real (double) и integer
+        if (result->getType()->isIntegerTy() && rhs->getType()->isIntegerTy()) {
+            // Оба операнда типа i32
             if (op == "<") {
                 result = builder.CreateICmpSLT(result, rhs, "cmplt_relation");
             } else if (op == "<=") {
@@ -938,15 +946,60 @@ void generateAssignment(
                 result = builder.CreateICmpEQ(result, rhs, "cmpeq_relation");
             } else if (op == "/=") {
                 result = builder.CreateICmpNE(result, rhs, "cmpne_relation");
-            } else {
-                llvm::errs()
-                    << "Error: Unsupported Relation operator '" << op << "'.\n";
-                return nullptr;
+            }
+        } else if (result->getType()->isIntegerTy()) {
+            // Приводим integer к double (real)
+            result = builder.CreateSIToFP(result, llvm::Type::getDoubleTy(context), "result_cast");
+            if (op == "<") {
+                result = builder.CreateFCmpOLT(result, rhs, "cmplt_relation");
+            } else if (op == "<=") {
+                result = builder.CreateFCmpOLE(result, rhs, "cmple_relation");
+            } else if (op == ">") {
+                result = builder.CreateFCmpOGT(result, rhs, "cmpgt_relation");
+            } else if (op == ">=") {
+                result = builder.CreateFCmpOGE(result, rhs, "cmpge_relation");
+            } else if (op == "=") {
+                result = builder.CreateFCmpOEQ(result, rhs, "cmpeq_relation");
+            } else if (op == "/=") {
+                result = builder.CreateFCmpONE(result, rhs, "cmpne_relation");
+            }
+        } else if (rhs->getType()->isIntegerTy()) {
+            // Приводим integer к double (real)
+            rhs = builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context), "rhs_cast");
+            if (op == "<") {
+                result = builder.CreateFCmpOLT(result, rhs, "cmplt_relation");
+            } else if (op == "<=") {
+                result = builder.CreateFCmpOLE(result, rhs, "cmple_relation");
+            } else if (op == ">") {
+                result = builder.CreateFCmpOGT(result, rhs, "cmpgt_relation");
+            } else if (op == ">=") {
+                result = builder.CreateFCmpOGE(result, rhs, "cmpge_relation");
+            } else if (op == "=") {
+                result = builder.CreateFCmpOEQ(result, rhs, "cmpeq_relation");
+            } else if (op == "/=") {
+                result = builder.CreateFCmpONE(result, rhs, "cmpne_relation");
+            }
+        } else {
+            // Оба операнда типа double (real)
+            if (op == "<") {
+                result = builder.CreateFCmpOLT(result, rhs, "cmplt_relation");
+            } else if (op == "<=") {
+                result = builder.CreateFCmpOLE(result, rhs, "cmple_relation");
+            } else if (op == ">") {
+                result = builder.CreateFCmpOGT(result, rhs, "cmpgt_relation");
+            } else if (op == ">=") {
+                result = builder.CreateFCmpOGE(result, rhs, "cmpge_relation");
+            } else if (op == "=") {
+                result = builder.CreateFCmpOEQ(result, rhs, "cmpeq_relation");
+            } else if (op == "/=") {
+                result = builder.CreateFCmpONE(result, rhs, "cmpne_relation");
             }
         }
-
-        return result;
     }
+
+    return result;
+}
+
 
     // Функция для генерации Simple (Factor { ( + | - ) Factor })
     llvm::Value *
