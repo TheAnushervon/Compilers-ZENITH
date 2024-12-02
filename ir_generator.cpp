@@ -62,6 +62,7 @@ class IRGenerator {
 
     void generateProgram(Node *node) {
         generateInsertionFunction();
+        generateGetIntFunction();
         auto program = dynamic_cast<Program *>(node);
         if (!program) {
             llvm::errs() << "Error: Node is not a Program.\n";
@@ -144,6 +145,7 @@ class IRGenerator {
 
     std::unordered_set<std::string> arrNames;
     llvm::Function* insertIntFunction = nullptr;
+    llvm::Function* getIntFunction = nullptr;
 
     void generateMain(const Program *program) {
         llvm::FunctionType *mainType =
@@ -162,7 +164,6 @@ class IRGenerator {
 
         for (auto &varDecl : globalVars) {
             auto varName = varDecl.first;
-            std::cout << varName << std::endl;
             auto globalVar =
                 llvm::dyn_cast<llvm::GlobalVariable>(globalVars[varName]);
             if (!globalVar)
@@ -1088,6 +1089,47 @@ class IRGenerator {
             if (identifier) {
                 // Очистка имени идентификатора
                 std::string name = sanitizeName(identifier->name);
+                if (arrNames.count(name) > 0) {
+                    // Обрабатываем выражение индекса (arr[4])
+                    auto indexExpr = dynamic_cast<Expression*>(modifiable->expression.get());
+                    llvm::Value *index = generateExpression(indexExpr, localVars, param_names);
+                    if (!index) {
+                        llvm::errs() << "Error: Failed to generate index expression for array access.\n";
+                        return nullptr;
+                    }
+
+                    // Получаем ссылку на функцию getInt
+                    llvm::Function *getIntFunc = getIntFunction;
+
+                    // Проверяем, что у нас есть ссылка на функцию
+                    if (!getIntFunc) {
+                        llvm::errs() << "Error: getInt function is not available.\n";
+                        return nullptr;
+                    }
+
+                    // Создаем аргументы для вызова функции getInt (указатель на массив и индекс)
+                    llvm::Value *arrayPtr = localVars[name]; // Это должен быть указатель на массив
+
+                    // Проверка типа массива (ожидаем указатель на i32)
+                    if (!arrayPtr->getType()->isPointerTy()) {
+                        llvm::errs() << "Error: Expected pointer type for array.\n";
+                        return nullptr;
+                    }
+
+                    // Вызов функции getInt для получения значения элемента массива
+                    std::vector<llvm::Value*> args;
+                    args.push_back(arrayPtr);  // указатель на массив
+                    args.push_back(index);     // индекс элемента
+
+                    // Вызываем функцию getInt
+                    llvm::Value *element = builder.CreateCall(getIntFunc, args);
+
+                    // Возвращаем результат
+                    return element;
+
+                }
+                else {
+
                 llvm::outs()
                     << "Generating Primary for identifier: " << name << "\n";
 
@@ -1110,11 +1152,11 @@ class IRGenerator {
                         llvm::outs()
                             << "Loaded value from variable: " << name << "\n";
                         return loadedVal;
-                    } else {
-                        llvm::errs() << "Error: Variable " << name
-                                     << " is not an AllocaInst.\n";
-                        return nullptr;
-                    }
+                            } else {
+                                llvm::errs() << "Error: Variable " << name
+                                             << " is not an AllocaInst.\n";
+                                return nullptr;
+                            }
                 }
                 // Проверка параметров функции
                 else if (param_names.find(name) != param_names.end()) {
@@ -1136,6 +1178,7 @@ class IRGenerator {
                     return nullptr;
                 }
             }
+        }
         }
 
         llvm::errs() << "Error: Primary node processing failed.\n";
@@ -1264,145 +1307,105 @@ class IRGenerator {
                                module.get());
     }
     // Добавьте этот метод в приватную секцию класса IRGenerator
-    void
-    generateForLoop(const ForLoop *forLoop,
-                    std::unordered_map<std::string, llvm::Value *> &localVars,
-                    const std::set<std::string> &param_names) {
+ void generateForLoop(const ForLoop *forLoop,
+                     std::unordered_map<std::string, llvm::Value *> &localVars,
+                     const std::set<std::string> &param_names) {
 
-        llvm::outs() << "Generating ForLoop...\n";
+    llvm::outs() << "Generating ForLoop...\n";
 
-        // Генерация начального и конечного значений диапазона
-        llvm::Value *startVal = generateExpression(
-            dynamic_cast<Expression *>(
-                dynamic_cast<Range *>(forLoop->range.get())->start.get()),
-            localVars, param_names);
-        llvm::Value *endVal = generateExpression(
-            dynamic_cast<Expression *>(
-                dynamic_cast<Range *>(forLoop->range.get())->end.get()),
-            localVars, param_names);
+    // Генерация начального и конечного значений диапазона
+    llvm::Value *startVal = generateExpression(
+        dynamic_cast<Expression *>(
+            dynamic_cast<Range *>(forLoop->range.get())->start.get()),
+        localVars, param_names);
+    llvm::Value *endVal = generateExpression(
+        dynamic_cast<Expression *>(
+            dynamic_cast<Range *>(forLoop->range.get())->end.get()),
+        localVars, param_names);
 
-        if (!startVal || !endVal) {
-            llvm::errs() << "Error: Failed to generate range for ForLoop.\n";
-            return;
-        }
+    if (!startVal || !endVal) {
+        llvm::errs() << "Error: Failed to generate range for ForLoop.\n";
+        return;
+    }
 
-        // Создание переменной цикла
-        llvm::Function *function = builder.GetInsertBlock()->getParent();
-        llvm::AllocaInst *loopVarAlloca =
-            builder.CreateAlloca(builder.getInt32Ty(), nullptr, "i");
-        builder.CreateStore(startVal, loopVarAlloca);
-        llvm::outs() << "Loop variable 'i' allocated and initialized.\n";
+    // Создание переменной цикла
+    llvm::Function *function = builder.GetInsertBlock()->getParent();
+    llvm::AllocaInst *loopVarAlloca =
+        builder.CreateAlloca(builder.getInt32Ty(), nullptr, "i");
+    builder.CreateStore(startVal, loopVarAlloca);
+    llvm::outs() << "Loop variable 'i' allocated and initialized.\n";
 
-        // Добавляем переменную цикла в `localVars`
-        localVars["i"] = loopVarAlloca;
+    // Добавляем переменную цикла в `localVars`
+    localVars["i"] = loopVarAlloca;
 
-        // Создание блоков цикла
-        llvm::BasicBlock *loopCondBB =
-            llvm::BasicBlock::Create(context, "loopcond", function);
-        llvm::BasicBlock *loopBodyBB =
-            llvm::BasicBlock::Create(context, "loopbody", function);
-        llvm::BasicBlock *loopEndBB =
-            llvm::BasicBlock::Create(context, "loopend", function);
+    // Создание блоков цикла
+    llvm::BasicBlock *loopCondBB =
+        llvm::BasicBlock::Create(context, "loopcond", function);
+    llvm::BasicBlock *loopBodyBB =
+        llvm::BasicBlock::Create(context, "loopbody", function);
+    llvm::BasicBlock *loopEndBB =
+        llvm::BasicBlock::Create(context, "loopend", function);
 
-        // Переход к блоку условия
-        builder.CreateBr(loopCondBB);
+    // Переход к блоку условия
+    builder.CreateBr(loopCondBB);
 
-        // Генерация условия
-        builder.SetInsertPoint(loopCondBB);
-        llvm::Value *currentVal =
-            builder.CreateLoad(builder.getInt32Ty(), loopVarAlloca, "i");
-        llvm::outs() << "Current value of 'i': ";
-        currentVal->print(llvm::outs());
-        llvm::outs() << "\n";
-        llvm::Value *cmp = builder.CreateICmpSLE(currentVal, endVal, "loopcmp");
-        llvm::outs() << "Loop comparison result: ";
-        cmp->print(llvm::outs());
-        llvm::outs() << "\n";
-        builder.CreateCondBr(cmp, loopBodyBB, loopEndBB);
+    // Генерация условия
+    builder.SetInsertPoint(loopCondBB);
+    llvm::Value *currentVal =
+        builder.CreateLoad(builder.getInt32Ty(), loopVarAlloca, "i");
+    llvm::outs() << "Current value of 'i': ";
+    currentVal->print(llvm::outs());
+    llvm::outs() << "\n";
+    llvm::Value *cmp = builder.CreateICmpSLE(currentVal, endVal, "loopcmp");
+    llvm::outs() << "Loop comparison result: ";
+    cmp->print(llvm::outs());
+    llvm::outs() << "\n";
+    builder.CreateCondBr(cmp, loopBodyBB, loopEndBB);
 
-        // Генерация тела цикла
-        builder.SetInsertPoint(loopBodyBB);
-        llvm::outs() << "Generating loop body...\n";
+    // Генерация тела цикла
+    builder.SetInsertPoint(loopBodyBB);
+    llvm::outs() << "Generating loop body...\n";
 
-        auto body = dynamic_cast<Body *>(forLoop->body.get());
-        if (!body) {
-            llvm::errs() << "Error: ForLoop body is invalid.\n";
-            return;
-        }
+    auto body = dynamic_cast<Body *>(forLoop->body.get());
+    if (!body) {
+        llvm::errs() << "Error: ForLoop body is invalid.\n";
+        return;
+    }
 
-        for (const auto &stmt : body->statements) {
-            if (auto statementNode = dynamic_cast<Statement *>(stmt.get())) {
-                auto childNode = statementNode->child.get();
-                //TODO добавить параметры функци в локальные переменные
-                //TODO перейти на присваивание
-                if (auto assignStmt = dynamic_cast<Assignment *>(childNode)) {
-                    llvm::outs() << "Processing Assignment in loop body.\n";
+    // Обрабатываем каждое утверждение в теле цикла
+    for (const auto &stmt : body->statements) {
+        if (auto statementNode = dynamic_cast<Statement *>(stmt.get())) {
+            auto childNode = statementNode->child.get();
 
-                    auto modifiable = dynamic_cast<ModifiablePrimary *>(
-                        assignStmt->modifiablePrimary.get());
-                    auto expression = dynamic_cast<Expression *>(
-                        assignStmt->expression.get());
+            if (auto assignStmt = dynamic_cast<Assignment *>(childNode)) {
+                llvm::outs() << "Processing Assignment in loop body.\n";
 
-                    if (!modifiable || !expression) {
-                        llvm::errs()
-                            << "Error: Invalid Assignment in loop body.\n";
-                        continue;
-                    }
-
-                    auto identifier = dynamic_cast<Identifier *>(
-                        modifiable->identifier.get());
-                    if (!identifier) {
-                        llvm::errs()
-                            << "Error: Invalid left-hand side in Assignment.\n";
-                        continue;
-                    }
-
-                    std::string varName = sanitizeName(identifier->name);
-                    llvm::Value *targetVar = nullptr;
-
-                    if (localVars.find(varName) != localVars.end()) {
-                        targetVar = localVars[varName];
-                    } else {
-                        llvm::errs() << "Error: Variable " << varName
-                                     << " not found in localVars.\n";
-                        continue;
-                    }
-
-                    llvm::Value *exprVal =
-                        generateExpression(expression, localVars, param_names);
-                    if (!exprVal) {
-                        llvm::errs() << "Error: Failed to generate right-hand "
-                                        "side of Assignment.\n";
-                        continue;
-                    }
-
-                    builder.CreateStore(exprVal, targetVar);
-                    llvm::outs()
-                        << "Assignment generated for variable: " << varName
-                        << "\n";
-                } else {
-                    llvm::outs() << "Warning: Unrecognized statement type in "
-                                    "loop body.\n";
-                }
+                // Вызов функции для обработки присваивания
+                generateAssignment(assignStmt, localVars, param_names);
+            } else {
+                llvm::outs() << "Warning: Unrecognized statement type in "
+                                "loop body.\n";
             }
         }
-
-        // Инкремент переменной цикла
-        llvm::Value *nextVal = builder.CreateAdd(
-            currentVal, llvm::ConstantInt::get(builder.getInt32Ty(), 1),
-            "nextval");
-        builder.CreateStore(nextVal, loopVarAlloca);
-        llvm::outs() << "Loop variable 'i' incremented to: ";
-        nextVal->print(llvm::outs());
-        llvm::outs() << "\n";
-
-        // Переход обратно к условию
-        builder.CreateBr(loopCondBB);
-
-        // Генерация блока выхода
-        builder.SetInsertPoint(loopEndBB);
-        llvm::outs() << "ForLoop generation completed.\n";
     }
+
+    // Инкремент переменной цикла
+    llvm::Value *nextVal = builder.CreateAdd(
+        currentVal, llvm::ConstantInt::get(builder.getInt32Ty(), 1),
+        "nextval");
+    builder.CreateStore(nextVal, loopVarAlloca);
+    llvm::outs() << "Loop variable 'i' incremented to: ";
+    nextVal->print(llvm::outs());
+    llvm::outs() << "\n";
+
+    // Переход обратно к условию
+    builder.CreateBr(loopCondBB);
+
+    // Генерация блока выхода
+    builder.SetInsertPoint(loopEndBB);
+    llvm::outs() << "ForLoop generation completed.\n";
+}
+
 
     // Функция для генерации TypeDeclaration (record)
     void generateRecord(const TypeDeclaration *typeDecl) {
@@ -1580,4 +1583,52 @@ class IRGenerator {
         llvm::Value* args[] = { arrPtr, index, value };
         builder.CreateCall(insertIntFunction, args);
     }
+
+    void generateGetIntFunction() {
+        // Тип для индекса и значения
+        llvm::Type *i32Type = llvm::Type::getInt32Ty(context);  // Тип для индекса и значения
+
+        // Тип возвращаемого значения функции - i32
+        llvm::FunctionType *funcType = llvm::FunctionType::get(
+            i32Type, {llvm::PointerType::get(i32Type, 0), i32Type}, false);
+
+        // Создание функции с внешней линковкой (глобальная)
+        llvm::Function *getFunction = llvm::Function::Create(
+            funcType, llvm::Function::ExternalLinkage, "getInt", *module);
+
+        // Создание начального блока для тела функции
+        llvm::BasicBlock *entry = llvm::BasicBlock::Create(context, "entry", getFunction);
+        builder.SetInsertPoint(entry);
+
+        // Получение параметров функции
+        llvm::Function::arg_iterator args = getFunction->arg_begin();
+        llvm::Value *arrayPtr = args++;  // Указатель на массив
+        llvm::Value *index = args++;    // Индекс
+
+        // Создание GEP с указанием типа элемента массива (i32)
+        llvm::Value *elementPtr = builder.CreateGEP(i32Type, arrayPtr, index, "elementPtr");
+
+        // Загрузка значения из массива
+        llvm::Value *loadedValue = builder.CreateLoad(i32Type, elementPtr, "loadedValue");
+
+        // Возвращаем загруженное значение
+        builder.CreateRet(loadedValue);
+        getIntFunction = module->getFunction("getInt");
+        llvm::outs() << "Глобальная функция getInt сгенерирована.\n";
+    }
+
+    void callGetInt(llvm::Value* arrPtr, llvm::Value* index) {
+        // Генерация вызова функции getInt с массивом и индексом
+        llvm::Type* int32Ty = llvm::Type::getInt32Ty(context);
+        llvm::Value* args[] = { arrPtr, index };
+
+        llvm::Value* result = builder.CreateCall(getIntFunction, args);
+
+
+        // Можно вернуть или использовать result для дальнейших операций
+        llvm::outs() << "Значение из массива: ";
+        result->print(llvm::outs());
+        llvm::outs() << "\n";
+    }
+
 };

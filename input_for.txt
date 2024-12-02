@@ -1,13 +1,13 @@
 routine sum(a: integer, b: integer) : integer is
-     var f : integer is a
-     f := b
-    for i in 1..10 loop
-       f:= f + 1
+    var arr : array[10] integer
+    var x : integer is 0
+    for i in 0..9 loop
+        arr[i] := i * i
     end
-    return f
+    x := arr[4]
+    return x
 end
 
-var p : integer is 7
-var k : integer is 9
+var k : integer is 7
 
-print(sum(p, k))
+print(sum(k, k))
