@@ -2,22 +2,6 @@ Program:
     SimpleDeclaration:
         VariableDeclaration:
             Identifier:
-              p
-            Type:
-                PrimitiveType:
-                  integer
-            Expression:
-                Relation:
-                    Simple:
-                        Factor:
-                            Summand:
-                                Primary:
-                                    LiteralPrimary
-                                        Integer: 7
-
-    SimpleDeclaration:
-        VariableDeclaration:
-            Identifier:
               k
             Type:
                 PrimitiveType:
@@ -29,7 +13,7 @@ Program:
                             Summand:
                                 Primary:
                                     LiteralPrimary
-                                        Integer: 9
+                                        Integer: 7
 
   Print:
         RoutineCall:
@@ -43,7 +27,7 @@ Program:
                                 Primary:
                                     ModifiablePrimary:
                                         Identifier:
-                                          p
+                                          k
 
             Expression:
                 Relation:
@@ -83,7 +67,25 @@ Program:
             SimpleDeclaration:
                 VariableDeclaration:
                     Identifier:
-                      f
+                      arr
+                    Type:
+                        ArrayType:
+                            Expression:
+                                Relation:
+                                    Simple:
+                                        Factor:
+                                            Summand:
+                                                Primary:
+                                                    LiteralPrimary
+                                                        Integer: 10
+                            Type:
+                                PrimitiveType:
+                                  integer
+
+            SimpleDeclaration:
+                VariableDeclaration:
+                    Identifier:
+                      x
                     Type:
                         PrimitiveType:
                           integer
@@ -93,27 +95,31 @@ Program:
                                 Factor:
                                     Summand:
                                         Primary:
-                                            ModifiablePrimary:
-                                                Identifier:
-                                                  a
-
+                                            LiteralPrimary
+                                                Integer: 0
 
             Statement:
               Assignment:
                   ModifiablePrimary:
                       Identifier:
-                        f
+                        arr
 
+                      Expression:
+                          Relation:
+                              Simple:
+                                  Factor:
+                                      Summand:
+                                          Primary:
+                                              LiteralPrimary
+                                                  Integer: 0
                   Expression:
                       Relation:
                           Simple:
                               Factor:
                                   Summand:
                                       Primary:
-                                          ModifiablePrimary:
-                                              Identifier:
-                                                b
-
+                                          LiteralPrimary
+                                              Integer: 5
 
             Statement:
               ForLoop:
@@ -139,14 +145,55 @@ Program:
                                       Summand:
                                           Primary:
                                               LiteralPrimary
-                                                  Integer: 10
+                                                  Integer: 9
 
                   Body:
+                      SimpleDeclaration:
+                          VariableDeclaration:
+                              Identifier:
+                                prev
+                              Type:
+                                  PrimitiveType:
+                                    integer
+                              Expression:
+                                  Relation:
+                                      Simple:
+                                          Factor:
+                                              Summand:
+                                                  Primary:
+                                                      LiteralPrimary
+                                                          Integer: 0
+
+                      SimpleDeclaration:
+                          VariableDeclaration:
+                              Identifier:
+                                prevIndex
+                              Type:
+                                  PrimitiveType:
+                                    integer
+                              Expression:
+                                  Relation:
+                                      Simple:
+                                          Factor:
+                                              Summand:
+                                                  Primary:
+                                                      ModifiablePrimary:
+                                                          Identifier:
+                                                            i
+
+
+                                          Operator: -
+                                          Factor:
+                                              Summand:
+                                                  Primary:
+                                                      LiteralPrimary
+                                                          Integer: 1
+
                       Statement:
                         Assignment:
                             ModifiablePrimary:
                                 Identifier:
-                                  f
+                                  prev
 
                             Expression:
                                 Relation:
@@ -156,7 +203,44 @@ Program:
                                                 Primary:
                                                     ModifiablePrimary:
                                                         Identifier:
-                                                          f
+                                                          arr
+
+                                                        Expression:
+                                                            Relation:
+                                                                Simple:
+                                                                    Factor:
+                                                                        Summand:
+                                                                            Primary:
+                                                                                ModifiablePrimary:
+                                                                                    Identifier:
+                                                                                      prevIndex
+
+
+                      Statement:
+                        Assignment:
+                            ModifiablePrimary:
+                                Identifier:
+                                  arr
+
+                                Expression:
+                                    Relation:
+                                        Simple:
+                                            Factor:
+                                                Summand:
+                                                    Primary:
+                                                        ModifiablePrimary:
+                                                            Identifier:
+                                                              i
+
+                            Expression:
+                                Relation:
+                                    Simple:
+                                        Factor:
+                                            Summand:
+                                                Primary:
+                                                    ModifiablePrimary:
+                                                        Identifier:
+                                                          prev
 
 
                                         Operator: +
@@ -167,6 +251,31 @@ Program:
                                                         Integer: 1
 
 
+            Statement:
+              Assignment:
+                  ModifiablePrimary:
+                      Identifier:
+                        x
+
+                  Expression:
+                      Relation:
+                          Simple:
+                              Factor:
+                                  Summand:
+                                      Primary:
+                                          ModifiablePrimary:
+                                              Identifier:
+                                                arr
+
+                                              Expression:
+                                                  Relation:
+                                                      Simple:
+                                                          Factor:
+                                                              Summand:
+                                                                  Primary:
+                                                                      LiteralPrimary
+                                                                          Integer: 4
+
             ReturnType:
                 Expression:
                     Relation:
@@ -176,7 +285,7 @@ Program:
                                     Primary:
                                         ModifiablePrimary:
                                             Identifier:
-                                              f
+                                              x
 
 
 
