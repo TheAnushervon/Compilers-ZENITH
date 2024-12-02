@@ -44,6 +44,9 @@
 #include "nodes/type_declaration.h"
 #include "nodes/variable_declaration.h"
 #include "utility/utils.cpp"
+#include "nodes/array_type.h"
+
+#include <unordered_set>
 
 class IRGenerator {
   public:
@@ -58,6 +61,7 @@ class IRGenerator {
     }
 
     void generateProgram(Node *node) {
+        generateInsertionFunction();
         auto program = dynamic_cast<Program *>(node);
         if (!program) {
             llvm::errs() << "Error: Node is not a Program.\n";
@@ -137,6 +141,8 @@ class IRGenerator {
         recordValidation;
 
     std::unordered_map<std::string, std::string> recordToType;
+
+    std::unordered_set<std::string> arrNames;
 
     void generateMain(const Program *program) {
         llvm::FunctionType *mainType =
@@ -462,47 +468,52 @@ class IRGenerator {
                         std::string varName = sanitizeName(identifier->name);
                         llvm::outs()
                             << "Declaring variable: " << varName << "\n";
-
-                        auto type = dynamic_cast<Type *>(varDecl->type.get());
-                        if (!type) {
-                            llvm::errs()
-                                << "Error: VariableDeclaration without Type.\n";
-                            continue;
+                        if (auto p = dynamic_cast<ArrayType*>(dynamic_cast<Type*>(varDecl->type.get())->child.get())) {
+                            generateArray(varDecl, localVars);
                         }
+                        else {
 
-                        llvm::Type *varType = mapType(type->child.get());
-                        if (!varType) {
-                            llvm::errs()
-                                << "Error: Cannot map type for variable "
-                                << varName << "\n";
-                            continue;
-                        }
-
-                        llvm::Value *alloca =
-                            builder.CreateAlloca(varType, nullptr, varName);
-                        localVars[varName] = alloca;
-                        llvm::outs()
-                            << "Allocated space for " << varName << "\n";
-
-                        if (auto expression = dynamic_cast<Expression *>(
-                                varDecl->expression.get())) {
-                            if (!expression->relations.empty()) {
-                                llvm::Value *exprValue = generateExpression(
-                                    expression, localVars, param_names);
-                                if (exprValue) {
-                                    builder.CreateStore(exprValue, alloca);
-                                    llvm::outs() << "Stored value in "
-                                                 << varName << "\n";
-                                } else {
-                                    llvm::errs() << "Error: Failed to generate "
-                                                    "expression for variable "
-                                                 << varName << "\n";
-                                }
-                            } else {
+                            auto type = dynamic_cast<Type *>(varDecl->type.get());
+                            if (!type) {
                                 llvm::errs()
-                                    << "Error: VariableDeclaration expression "
-                                       "does not contain relations.\n";
+                                    << "Error: VariableDeclaration without Type.\n";
+                                continue;
                             }
+
+                            llvm::Type *varType = mapType(type->child.get());
+                            if (!varType) {
+                                llvm::errs()
+                                    << "Error: Cannot map type for variable "
+                                    << varName << "\n";
+                                continue;
+                            }
+
+                            llvm::Value *alloca =
+                                builder.CreateAlloca(varType, nullptr, varName);
+                            localVars[varName] = alloca;
+                            llvm::outs()
+                                << "Allocated space for " << varName << "\n";
+
+                            if (auto expression = dynamic_cast<Expression *>(
+                                    varDecl->expression.get())) {
+                                if (!expression->relations.empty()) {
+                                    llvm::Value *exprValue = generateExpression(
+                                        expression, localVars, param_names);
+                                    if (exprValue) {
+                                        builder.CreateStore(exprValue, alloca);
+                                        llvm::outs() << "Stored value in "
+                                                     << varName << "\n";
+                                    } else {
+                                        llvm::errs() << "Error: Failed to generate "
+                                                        "expression for variable "
+                                                     << varName << "\n";
+                                    }
+                                } else {
+                                    llvm::errs()
+                                        << "Error: VariableDeclaration expression "
+                                           "does not contain relations.\n";
+                                }
+                                    }
                         }
                     }
                 }
@@ -1442,5 +1453,85 @@ class IRGenerator {
             globalVars[newName] = globalVar;
             std::cout << "Record generation completed\n";
         }
+    }
+
+     void generateArray(const VariableDeclaration* varDecl,
+                  std::unordered_map<std::string, llvm::Value*> &localVars) {
+    // Извлекаем имя переменной
+    auto identifier = dynamic_cast<Identifier*>(varDecl->identifier.get());
+    if (!identifier) {
+        llvm::errs() << "Ошибка: VariableDeclaration не содержит Identifier.\n";
+        return;
+    }
+    std::string varName = sanitizeName(identifier->name);
+        arrNames.insert(varName);
+
+    // Извлекаем тип переменной
+    auto typeNode = dynamic_cast<Type*>(varDecl->type.get());
+    if (!typeNode || !typeNode->child) {
+        llvm::errs() << "Ошибка: VariableDeclaration не содержит Type или child.\n";
+        return;
+    }
+
+    // Проверяем, что тип - это ArrayType
+    auto arrayTypeNode = dynamic_cast<ArrayType*>(typeNode->child.get());
+
+    // Извлекаем размер массива из Expression
+    auto sizeValue = generateExpression(dynamic_cast<Expression*>(arrayTypeNode->expression.get()), localVars, {});
+
+    if (!sizeValue) {
+        llvm::errs() << "Ошибка: Не удалось сгенерировать значение размера массива.\n";
+        return;
+    }
+
+    int arraySize = llvm::cast<llvm::ConstantInt>(sizeValue)->getSExtValue();
+
+    // Извлекаем тип элементов массива
+    auto elemTypeNode = dynamic_cast<Type*>(arrayTypeNode->type.get());
+
+    llvm::Type* elemLLVMType = mapType(elemTypeNode->child.get());
+
+    // Создаём тип массива в LLVM
+    llvm::ArrayType* llvmArrayType = llvm::ArrayType::get(elemLLVMType, arraySize);
+
+    // Создаём alloca для массива (выделение памяти на стеке)
+    llvm::AllocaInst* arrayAlloca = builder.CreateAlloca(llvmArrayType, nullptr, varName);
+    llvm::outs() << "Локальный массив '" << varName << "' выделен на стеке.\n";
+
+    // Добавляем переменную в локальные переменные
+    localVars[varName] = arrayAlloca;
+}
+    void generateInsertionFunction() {
+        // Тип для индекса и значения
+        llvm::Type *i32Type = llvm::Type::getInt32Ty(context);  // Тип для индекса и значения
+
+        // Тип возвращаемого значения функции - void
+        llvm::FunctionType *funcType = llvm::FunctionType::get(
+            llvm::Type::getVoidTy(context), {llvm::PointerType::get(i32Type, 0), i32Type, i32Type}, false);
+
+        // Создание функции с внешней линковкой (глобальная)
+        llvm::Function *insertFunction = llvm::Function::Create(
+            funcType, llvm::Function::ExternalLinkage, "insertInt", *module);
+
+        // Создание начального блока для тела функции
+        llvm::BasicBlock *entry = llvm::BasicBlock::Create(context, "entry", insertFunction);
+        builder.SetInsertPoint(entry);
+
+        // Получение параметров функции
+        llvm::Function::arg_iterator args = insertFunction->arg_begin();
+        llvm::Value *arrayPtr = args++;  // Указатель на массив
+        llvm::Value *index = args++;    // Индекс
+        llvm::Value *value = args++;    // Значение для вставки
+
+        // Создание GEP с указанием типа элемента массива (i32)
+        llvm::Value *elementPtr = builder.CreateGEP(i32Type, arrayPtr, index, "elementPtr");
+
+        // Сохранение значения в массив
+        builder.CreateStore(value, elementPtr);
+
+        // Завершение функции
+        builder.CreateRetVoid();
+
+        llvm::outs() << "Глобальная функция insertInt сгенерирована.\n";
     }
 };
