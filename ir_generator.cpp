@@ -950,56 +950,86 @@ void generateAssignment(
 
     // Функция для генерации Simple (Factor { ( + | - ) Factor })
     llvm::Value *
-    generateSimple(const Simple *simple,
-                   std::unordered_map<std::string, llvm::Value *> &localVars,
-                   const std::set<std::string> &param_names) {
-        if (simple->factors.empty()) {
-            llvm::errs() << "Error: Simple contains no Factors.\n";
-            return nullptr;
+generateSimple(const Simple *simple,
+               std::unordered_map<std::string, llvm::Value *> &localVars,
+               const std::set<std::string> &param_names) {
+    if (simple->factors.empty()) {
+        llvm::errs() << "Error: Simple contains no Factors.\n";
+        return nullptr;
+    }
+
+    // Генерация первого Factor
+    llvm::Value *result =
+        generateFactor(dynamic_cast<Factor *>(simple->factors[0].get()),
+                       localVars, param_names);
+    if (!result) {
+        llvm::errs()
+            << "Error: Failed to generate first Factor in Simple.\n";
+        return nullptr;
+    }
+
+    // Итерируемся по оставшимся Factors и операторам
+    for (size_t i = 1; i < simple->factors.size(); ++i) {
+        if (i - 1 >= simple->operators.size()) {
+            llvm::errs() << "Error: Not enough operators in Simple.\n";
+            break;
         }
 
-        // Генерация первого Factor
-        llvm::Value *result =
-            generateFactor(dynamic_cast<Factor *>(simple->factors[0].get()),
+        std::string op = simple->operators[i - 1];
+        llvm::Value *rhs =
+            generateFactor(dynamic_cast<Factor *>(simple->factors[i].get()),
                            localVars, param_names);
-        if (!result) {
-            llvm::errs()
-                << "Error: Failed to generate first Factor in Simple.\n";
+        if (!rhs) {
+            llvm::errs() << "Error: Failed to generate Factor at index "
+                         << i << " in Simple.\n";
             return nullptr;
         }
 
-        // Итерируемся по оставшимся Factors и операторам
-        for (size_t i = 1; i < simple->factors.size(); ++i) {
-            if (i - 1 >= simple->operators.size()) {
-                llvm::errs() << "Error: Not enough operators in Simple.\n";
-                break;
-            }
+        std::cout << "Processing Simple operator: " << op << "\n";
 
-            std::string op = simple->operators[i - 1];
-            llvm::Value *rhs =
-                generateFactor(dynamic_cast<Factor *>(simple->factors[i].get()),
-                               localVars, param_names);
-            if (!rhs) {
-                llvm::errs() << "Error: Failed to generate Factor at index "
-                             << i << " in Simple.\n";
-                return nullptr;
-            }
+        // Проверка типов операндов перед операцией
+        if (result->getType() != rhs->getType()) {
+            llvm::errs() << "Error: Type mismatch between operands.\n";
+            return nullptr;
+        }
 
-            std::cout << "Processing Simple operator: " << op << "\n";
-
+        // Приведение типов для real (double) и integer
+        if (result->getType()->isIntegerTy() && rhs->getType()->isIntegerTy()) {
+            // Оба операнда типа i32
             if (op == "+") {
                 result = builder.CreateAdd(result, rhs, "addtmp_simple");
             } else if (op == "-") {
                 result = builder.CreateSub(result, rhs, "subtmp_simple");
-            } else {
-                llvm::errs()
-                    << "Error: Unsupported Simple operator '" << op << "'.\n";
-                return nullptr;
+            }
+        } else if (result->getType()->isIntegerTy()) {
+            // Приводим integer к double (real)
+            result = builder.CreateSIToFP(result, llvm::Type::getDoubleTy(context), "result_cast");
+            if (op == "+") {
+                result = builder.CreateFAdd(result, rhs, "addtmp_simple");
+            } else if (op == "-") {
+                result = builder.CreateFSub(result, rhs, "subtmp_simple");
+            }
+        } else if (rhs->getType()->isIntegerTy()) {
+            // Приводим integer к double (real)
+            rhs = builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context), "rhs_cast");
+            if (op == "+") {
+                result = builder.CreateFAdd(result, rhs, "addtmp_simple");
+            } else if (op == "-") {
+                result = builder.CreateFSub(result, rhs, "subtmp_simple");
+            }
+        } else {
+            // Оба операнда типа double (real)
+            if (op == "+") {
+                result = builder.CreateFAdd(result, rhs, "addtmp_simple");
+            } else if (op == "-") {
+                result = builder.CreateFSub(result, rhs, "subtmp_simple");
             }
         }
-
-        return result;
     }
+
+    return result;
+}
+
 
     // Функция для генерации Factor (Summand { ( * | / | % ) Summand })
     llvm::Value *
