@@ -36,3 +36,6 @@ output.json
 *.bc
 *.ll
 my_program
+.idea
+.vscode
+.ccls-cache
