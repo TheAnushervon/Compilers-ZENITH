@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <iostream>
 
 class Handler {
   public:
@@ -41,8 +42,7 @@ Handler::parse_tokens(const std::string &fileContents) {
         if (currentChar == ' ' || currentChar == '\n' || currentChar == '(' ||
             currentChar == ')' || currentChar == '[' || currentChar == ']' ||
             currentChar == ':' || currentChar == '=' || currentChar == ',' ||
-            currentChar == '/' || currentChar == '<' || currentChar == '>' ||
-            currentChar == '.') {
+            currentChar == '/' || currentChar == '<' || currentChar == '>') {
 
             std::string str = "";
             if (currentChar != ' ') {
@@ -63,6 +63,7 @@ Handler::parse_tokens(const std::string &fileContents) {
             }
 
             if (!potential.empty()) {
+                // std::cout << potential << std::endl;
                 if (check_for_range(potential)) {
                     std::string substr = "";
                     for (int j = 0; j < potential.size(); j++) {
@@ -109,6 +110,8 @@ Handler::parse_tokens(const std::string &fileContents) {
         output.push_back(Token(t, potential));
     }
 
+    output.push_back(Token(TokenType::tk_terminate, ""));
+
     return output;
 }
 
@@ -137,6 +140,12 @@ inline TokenType Handler::determine_tk(const std::string &tk) {
         return TokenType::tk_then;
     if (tk == "else")
         return TokenType::tk_else;
+    if (tk == "return") {
+        return TokenType::tk_return;
+    }
+    if (tk == "print") {
+        return TokenType::tk_print;
+    }
     if (tk == "integer")
         return TokenType::tk_integer;
     if (tk == "boolean")
@@ -154,6 +163,7 @@ inline TokenType Handler::determine_tk(const std::string &tk) {
     if (tk == "reverse")
         return TokenType::tk_reverse;
 
+    // Arithmetic and comparison operators
     if (tk == "+")
         return TokenType::tk_add;
     if (tk == "-")
@@ -201,9 +211,9 @@ inline TokenType Handler::determine_tk(const std::string &tk) {
         return TokenType::tk_dot;
     if (tk == "..")
         return TokenType::tk_range;
-
     if (tk == "\n")
         return TokenType::tk_newline;
+
     try {
         stoi(tk);
         return TokenType::tk_num;

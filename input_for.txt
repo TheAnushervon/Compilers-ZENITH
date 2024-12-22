@@ -1,0 +1,58 @@
+routine factor(a: integer, b: integer) : integer is
+
+    var m :integer is 1
+    for i in a..b loop
+         m := m * i
+    end
+    return m
+end
+
+routine sum(a: integer, b: integer) : integer is
+    var s : integer is a + b
+    return s
+end
+
+routine sum_function(a:integer, b: integer) : integer is
+    var s : integer is a
+    s := sum(a, b)
+    return s
+end
+
+routine first_more_second(a: integer, b: integer) : boolean is
+    var ans : boolean is a > b
+    return ans
+end
+
+routine comparator(a: integer, b: integer ) : integer is
+    var max : integer is b
+    if (a > b) then
+        max := a
+    end
+    return max
+end
+
+routine sum_arr(a: integer, b: integer) : integer is
+    var arr : array[10] integer
+    var x : integer is 0
+    for i in 0..9 loop
+        arr[i] := i * i
+    end
+    x := arr[4]
+    return x
+end
+
+var first : integer is 5
+var second : integer is 10
+var ans : integer is 99
+print ( sum_function(first, second) )
+print( comparator(first, second))
+print(first_more_second(second,first))
+print(ans)
+var f : integer is 4
+var s : integer is 8
+print(factor(f,s))
+
+
+var k : integer is 7
+
+print(sum_arr(k, k))

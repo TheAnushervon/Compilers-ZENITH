@@ -1,11 +1,14 @@
+#include "ir_generator.cpp"
 #include "json.hpp"
+#include "syntax_analyzer.cpp"
 #include "tokens/enums/token_type.h"
 #include "tokens/pars/pars_functions.h"
-#include <cctype>
+#include "type_checker.cpp"
 #include <fstream>
 #include <vector>
 
 namespace nh = nlohmann;
+namespace fs = std::filesystem;
 
 std::string toString(TokenType token) {
     switch (token) {
@@ -13,6 +16,8 @@ std::string toString(TokenType token) {
         return "tk_routine";
     case TokenType::tk_type:
         return "tk_type";
+    case TokenType::tk_print:
+        return "tk_print";
     case TokenType::tk_is:
         return "tk_is";
     case TokenType::tk_var:
@@ -103,6 +108,10 @@ std::string toString(TokenType token) {
         return "tk_num";
     case TokenType::tk_identifier:
         return "tk_identifier";
+    case TokenType::tk_terminate:
+        return "tk_terminate";
+    case TokenType::tk_return:
+        return "tk_return";
     default:
         return "Unknown token";
     }
@@ -110,12 +119,46 @@ std::string toString(TokenType token) {
 
 int main() {
 
-    std::ifstream inputfile("input.txt");
+    const std::string logDir = "logs";
+
+    try {
+        // Проверяем, существует ли каталог
+        if (!fs::exists(logDir) || !fs::is_directory(logDir)) {
+            std::cerr << "Directory " << logDir
+                      << " does not exist or is not a directory." << std::endl;
+            return 1;
+        }
+
+        // Итерируемся по всем файлам в каталоге
+        for (const auto &entry : fs::directory_iterator(logDir)) {
+            if (entry.is_regular_file()) {
+                // Очищаем файл
+                std::ofstream logFile(entry.path(),
+                                      std::ios::out | std::ios::trunc);
+                if (!logFile.is_open()) {
+                    std::cerr << "Failed to clear file: " << entry.path()
+                              << std::endl;
+                }
+            }
+        }
+    } catch (const std::exception &e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return 1;
+    }
+
+    std::ifstream inputfile("input_for.txt");
     std::string fileContents((std::istreambuf_iterator<char>(inputfile)),
                              std::istreambuf_iterator<char>());
     std::string potential = "";
 
     auto output = Handler::parse_tokens(fileContents);
+
+    for (int i = 0; i < output.size(); i++) {
+        if (output[i].type == TokenType::tk_newline) {
+            output.erase(output.begin() + i);
+            i--;
+        }
+    }
 
     nh::json json_output;
 
@@ -127,4 +170,20 @@ int main() {
     std::ofstream output_file("output.json");
     output_file << json_output.dump(4);
     output_file.close();
+
+    SyntaxAnalyzer syntaxAnalyzer(output);
+    const std::unique_ptr<Node> ast = syntaxAnalyzer.Analyze();
+
+    // Вывод в файл ast.txt
+    std::ofstream astFile("ast.txt", std::ios::out | std::ios::trunc);
+    if (astFile.is_open()) {
+        astFile << ast->ToString(2) << std::endl;
+        astFile.close();
+    } else {
+        std::cerr << "Failed to open file ast.txt for writing." << std::endl;
+    }
+
+    auto generator = new IRGenerator();
+    generator->generateProgram(ast.get());
+    free(generator);
 }
