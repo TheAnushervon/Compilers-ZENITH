@@ -1,14 +1,10 @@
 #include "ir_generator.cpp"
-#include "json.hpp"
 #include "syntax_analyzer.cpp"
 #include "tokens/enums/token_type.h"
 #include "tokens/pars/pars_functions.h"
 #include "type_checker.cpp"
 #include <fstream>
 #include <vector>
-
-namespace nh = nlohmann;
-namespace fs = std::filesystem;
 
 std::string toString(TokenType token) {
     switch (token) {
@@ -121,31 +117,6 @@ int main() {
 
     const std::string logDir = "logs";
 
-    try {
-        // Проверяем, существует ли каталог
-        if (!fs::exists(logDir) || !fs::is_directory(logDir)) {
-            std::cerr << "Directory " << logDir
-                      << " does not exist or is not a directory." << std::endl;
-            return 1;
-        }
-
-        // Итерируемся по всем файлам в каталоге
-        for (const auto &entry : fs::directory_iterator(logDir)) {
-            if (entry.is_regular_file()) {
-                // Очищаем файл
-                std::ofstream logFile(entry.path(),
-                                      std::ios::out | std::ios::trunc);
-                if (!logFile.is_open()) {
-                    std::cerr << "Failed to clear file: " << entry.path()
-                              << std::endl;
-                }
-            }
-        }
-    } catch (const std::exception &e) {
-        std::cerr << "Error: " << e.what() << std::endl;
-        return 1;
-    }
-
     std::ifstream inputfile("input_for.txt");
     std::string fileContents((std::istreambuf_iterator<char>(inputfile)),
                              std::istreambuf_iterator<char>());
@@ -159,17 +130,6 @@ int main() {
             i--;
         }
     }
-
-    nh::json json_output;
-
-    for (int i = 0; i < output.size(); i++) {
-        json_output.push_back(
-            {{"type", toString(output[i].type)}, {"value", output[i].value}});
-    }
-
-    std::ofstream output_file("output.json");
-    output_file << json_output.dump(4);
-    output_file.close();
 
     SyntaxAnalyzer syntaxAnalyzer(output);
     const std::unique_ptr<Node> ast = syntaxAnalyzer.Analyze();

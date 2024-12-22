@@ -12,6 +12,11 @@ routine sum(a: integer, b: integer) : integer is
     return s
 end
 
+routine double_sum(a: integer, b:integer) : integer is
+    var s: integer is sum(a, b)
+    return s
+end
+
 routine sum_function(a:integer, b: integer) : integer is
     var s : integer is a
     s := sum(a, b)
@@ -54,5 +59,7 @@ print(factor(f,s))
 
 
 var k : integer is 7
+
+print(double_sum(f, s))
 
 print(sum_arr(k, k))
