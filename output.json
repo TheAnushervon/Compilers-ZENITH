@@ -1,0 +1,30 @@
+[
+    {
+        "type": "tk_var",
+        "value": "var"
+    },
+    {
+        "type": "tk_identifier",
+        "value": "sum"
+    },
+    {
+        "type": "tk_colon",
+        "value": ":"
+    },
+    {
+        "type": "tk_integer",
+        "value": "integer"
+    },
+    {
+        "type": "tk_is",
+        "value": "is"
+    },
+    {
+        "type": "Unknown token",
+        "value": "0"
+    },
+    {
+        "type": "tk_newline",
+        "value": "\n"
+    }
+]
